@@ -4,6 +4,7 @@ namespace HelloTriangle.Nativelib;
 
 /// <summary>
 /// VkDevice 的托管 SafeHandle 包装.
+/// <para>销毁：请使用 VulkanRenderer 中对应的 Destroy 函数而不是使用 Dispose！</para>
 /// </summary>
 public class VkDevice : SafeHandleZeroOrMinusOneIsInvalid
 {
@@ -11,12 +12,6 @@ public class VkDevice : SafeHandleZeroOrMinusOneIsInvalid
 
     protected override bool ReleaseHandle()
     {
-        if(handle == IntPtr.Zero)
-            return false;
-        
-        // TODO destroy...
-
         return true;
-        
     }
 }
