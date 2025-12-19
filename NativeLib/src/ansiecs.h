@@ -1,0 +1,53 @@
+#pragma once
+
+// ANSI-ESC 预定义宏，以方便使用
+
+#define ESC                 "\E["
+#define ESC_RESET           ESC"0m"
+
+#define ESC_BOLD            ESC"1m"
+#define ESC_DIM             ESC"2m"
+#define ESC_LTALIC          ESC"3m"
+#define ESC_UNDERLINE       ESC"4m"
+#define ESC_BLINK           ESC"5m"
+#define ESC_INVERSE         ESC"7m"
+#define ESC_HIDDEN          ESC"8m"
+#define ESC_STRIKETHROUGH   ESC"9m"
+
+#define ESC_FCOLOR_BLACK    ESC"30m"
+#define ESC_FCOLOR_RED      ESC"31m"
+#define ESC_FCOLOR_GREEN    ESC"32m"
+#define ESC_FCOLOR_YELLOW   ESC"33m"
+#define ESC_FCOLOR_BLUE     ESC"34m"
+#define ESC_FCOLOR_MAGENTA  ESC"35m"
+#define ESC_FCOLOR_CYAN     ESC"36m"
+#define ESC_FCOLOR_WHITE    ESC"37m"
+#define ESC_FCOLOR_DEFAULT  ESC"39m"
+
+#define ESC_FCOLOR_BRIGHT_BLACK    ESC"90m"
+#define ESC_FCOLOR_BRIGHT_RED      ESC"91m"
+#define ESC_FCOLOR_BRIGHT_GREEN    ESC"92m"
+#define ESC_FCOLOR_BRIGHT_YELLOW   ESC"93m"
+#define ESC_FCOLOR_BRIGHT_BLUE     ESC"94m"
+#define ESC_FCOLOR_BRIGHT_MAGENTA  ESC"95m"
+#define ESC_FCOLOR_BRIGHT_CYAN     ESC"96m"
+#define ESC_FCOLOR_BRIGHT_WHITE    ESC"97m"
+
+#define ESC_BCOLOR_BLACK    ESC"40m"
+#define ESC_BCOLOR_RED      ESC"41m"
+#define ESC_BCOLOR_GREEN    ESC"42m"
+#define ESC_BCOLOR_YELLOW   ESC"43m"
+#define ESC_BCOLOR_BLUE     ESC"44m"
+#define ESC_BCOLOR_MAGENTA  ESC"45m"
+#define ESC_BCOLOR_CYAN     ESC"46m"
+#define ESC_BCOLOR_WHITE    ESC"47m"
+#define ESC_BCOLOR_DEFAULT  ESC"49m"
+
+#define ESC_BCOLOR_BRIGHT_BLACK    ESC"100m"
+#define ESC_BCOLOR_BRIGHT_RED      ESC"101m"
+#define ESC_BCOLOR_BRIGHT_GREEN    ESC"102m"
+#define ESC_BCOLOR_BRIGHT_YELLOW   ESC"103m"
+#define ESC_BCOLOR_BRIGHT_BLUE     ESC"104m"
+#define ESC_BCOLOR_BRIGHT_MAGENTA  ESC"105m"
+#define ESC_BCOLOR_BRIGHT_CYAN     ESC"106m"
+#define ESC_BCOLOR_BRIGHT_WHITE    ESC"107m"
