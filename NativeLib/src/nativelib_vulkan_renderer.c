@@ -117,7 +117,7 @@ bool check_instance_layer_properties(void)
         bool layerFound = false;
         for (int j = 0; j < layerCount; j++)
         {
-            if (!strcmp(requiredValidationLayers[i], layers[j].layerName))
+            if (strcmp(requiredValidationLayers[i], layers[j].layerName))
                 continue;
 
             layerFound = true;
