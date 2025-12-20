@@ -48,10 +48,10 @@ EX_API VkInstance createInstance(void)
     createInfo.enabledLayerCount        = 0;
     if (enableValidationLayers)     // 若启用验证层
     { 
-        uint32_t validationLayersCount = 
+        uint32_t validationLayerCount = 
             sizeof(validationLayers) / sizeof(validationLayers[0]);
 
-        createInfo.enabledLayerCount    = validationLayersCount;
+        createInfo.enabledLayerCount    = validationLayerCount;
         createInfo.ppEnabledLayerNames  = validationLayers;
     }
 
@@ -103,16 +103,16 @@ bool check_instance_layer_support_properties(void)
     // 打印我们请求的层名
     fprintf(stdout, "Application required validation layers:\n");
     
-    uint32_t validationLayersCount = 
+    uint32_t validationLayerCount = 
         sizeof(validationLayers) / sizeof(validationLayers[0]);
-    for (int i = 0; i < validationLayersCount ; i++)
+    for (int i = 0; i < validationLayerCount ; i++)
     {
         fprintf(stdout,
             ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, validationLayers[i]);
     }
 
     // 检查 validationLayer 中的层是否可用
-    for (int i = 0; i < validationLayersCount; i++)
+    for (int i = 0; i < validationLayerCount; i++)
     {
         bool layerFound = false;
         for (int j = 0; j < layerCount; j++)
@@ -306,9 +306,9 @@ bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
 
     fprintf(stdout, "Application required device extensions:\n");
 
-    uint32_t requiredDeviceExtensionsCount = 
+    uint32_t requiredDeviceExtensionCount = 
         sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
-    for (int i = 0; i < requiredDeviceExtensionsCount ; i++)
+    for (int i = 0; i < requiredDeviceExtensionCount; i++)
     {
         fprintf(stdout,
             ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredDeviceExtensions[i]);
