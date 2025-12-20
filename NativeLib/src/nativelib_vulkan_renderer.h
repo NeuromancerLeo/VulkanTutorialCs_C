@@ -15,7 +15,7 @@
     const bool enableValidationLayers = false;
 #endif
 
-const char* validationLayers[] = {
+const char* requiredValidationLayers[] = {
     "VK_LAYER_KHRONOS_validation"
 };
 
@@ -31,7 +31,7 @@ EX_API VkInstance createInstance(void);
 /// @brief 查询对 VkInstance 可用的层并打印出来，并检查请求的层是否可用.
 ///
 /// @return 当检查到有请求的层不可用时，该函数会打印相关信息，并返回 `false`
-bool check_instance_layer_support_properties(void);
+bool check_instance_layer_properties(void);
 
 /// @brief 查询对 Vulkan Instance 可用的扩展并打印出来.
 void check_instance_extension_properties(void);

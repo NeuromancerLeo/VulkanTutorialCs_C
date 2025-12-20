@@ -6,7 +6,7 @@
 EX_API VkInstance createInstance(void)
 {
     // 0.检查验证层是否开启并可用
-    if (enableValidationLayers && !check_instance_layer_support_properties())
+    if (enableValidationLayers && !check_instance_layer_properties())
     {
         fprintf(stderr, "Validation layers requested, but not available!\n");
 
@@ -48,11 +48,11 @@ EX_API VkInstance createInstance(void)
     createInfo.enabledLayerCount        = 0;
     if (enableValidationLayers)     // 若启用验证层
     { 
-        uint32_t validationLayerCount = 
-            sizeof(validationLayers) / sizeof(validationLayers[0]);
+        uint32_t requiredValidationLayerCount = 
+            sizeof(requiredValidationLayers) / sizeof(requiredValidationLayers[0]);
 
-        createInfo.enabledLayerCount    = validationLayerCount;
-        createInfo.ppEnabledLayerNames  = validationLayers;
+        createInfo.enabledLayerCount    = requiredValidationLayerCount;
+        createInfo.ppEnabledLayerNames  = requiredValidationLayers;
     }
 
     // 4.创建 Vulkan 实例
@@ -73,7 +73,7 @@ EX_API VkInstance createInstance(void)
     return instance;
 }
 
-bool check_instance_layer_support_properties(void)
+bool check_instance_layer_properties(void)
 {
     uint32_t layerCount = 0;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
@@ -103,21 +103,21 @@ bool check_instance_layer_support_properties(void)
     // 打印我们请求的层名
     fprintf(stdout, "Application required validation layers:\n");
     
-    uint32_t validationLayerCount = 
-        sizeof(validationLayers) / sizeof(validationLayers[0]);
-    for (int i = 0; i < validationLayerCount ; i++)
+    uint32_t requiredValidationLayerCount = 
+        sizeof(requiredValidationLayers) / sizeof(requiredValidationLayers[0]);
+    for (int i = 0; i < requiredValidationLayerCount ; i++)
     {
         fprintf(stdout,
-            ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, validationLayers[i]);
+            ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredValidationLayers[i]);
     }
 
     // 检查 validationLayer 中的层是否可用
-    for (int i = 0; i < validationLayerCount; i++)
+    for (int i = 0; i < requiredValidationLayerCount; i++)
     {
         bool layerFound = false;
         for (int j = 0; j < layerCount; j++)
         {
-            if (!strcmp(validationLayers[i], layers[j].layerName))
+            if (!strcmp(requiredValidationLayers[i], layers[j].layerName))
                 continue;
 
             layerFound = true;
@@ -129,7 +129,7 @@ bool check_instance_layer_support_properties(void)
         {
             fprintf(stderr,
                 "Not supported layer: %s, can't found in available layers!",
-                validationLayers[i]);
+                requiredValidationLayers[i]);
             return false;
         }
     }
