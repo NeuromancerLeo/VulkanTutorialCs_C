@@ -1,156 +1,89 @@
 #pragma once
 
+#include "nativelib.h"
+
 #include <vulkan/vulkan.h>
+#include <GLFW/glfw3.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
-/// @brief 该结构体定义物理设备可能拥有的队列族类型及其索引.
+#ifdef DEBUG
+    const bool enableValidationLayers = true;
+#else
+    const bool enableValidationLayers = false;
+#endif
+
+const char* validationLayers[] = {
+    "VK_LAYER_KHRONOS_validation"
+};
+
+/// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
+/// 
+/// @return 返回新创建的 VkInstance 句柄（当发生错误时返回 `NULL`）
+EX_API VkInstance createInstance(void);
+
+/// @brief 查询对 VkInstance 可用的层并打印出来，并检查请求的层是否可用.
 ///
-/// (索引值为 -1 表未找到)
-typedef struct QueueFamilyIndices
-{
-    int graphicsSupport;        // 支持 图形
-    int presentationSupport;    // 支持 呈现
-}QueueFamilyIndices;
+/// @return 当检查到有请求的层不可用时，该函数会打印相关信息，并返回 `false`
+bool check_layer_support_properties(void);
 
-QueueFamilyIndices init_QueueFamilyIndices()
-{
-    // 初始化，-1 表未找到
-    QueueFamilyIndices queueFamilyIndices = 
-    {
-        .graphicsSupport        = -1,   
-        .presentationSupport    = -1
-    };
+/// @brief 查询对 Vulkan Instance 可用的扩展并打印出来.
+void check_extension_properties(void);
 
-    return queueFamilyIndices;
-}
 
-/// @brief 查询给定物理设备所拥有的队列族，并按其队列支持相关信息填充 `QueueFamilyIndices`
-/// 结构体中的索引字段以返回.
+/// @brief 销毁给定的 VkInstance.
+EX_API void destroyInstance(VkInstance instance);
+
+
+/// @brief 在成功创建 VkInstance 后调用该函数创建 VkSurfaceKHR，其用于将渲染的图形呈现到屏幕上.
+/// 
+/// @param instance 调用该函数需要传入一个 VkInstance 句柄
+/// （需确保已启用了 `VK_KHR_surface` 扩展和平台相关的扩展如 `VK_KHR_win32_surface`）
+/// @param window 调用该函数需要传入一个 GLFWwindow 句柄
 ///
-/// 该函数会考虑并填充所有的索引字段.
-/// @param physicalDevice 给定的物理设备
+/// @return 返回新创建的 VkSurfaceKHR 句柄（当发生错误时返回 `NULL`）
+EX_API VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
+
+
+/// @brief 销毁给定的 VkSurfaceKHR.
 ///
-/// @return 填充后的 `QueueFamilyIndices` 结构体
-QueueFamilyIndices find_queue_families(
-    VkPhysicalDevice    physicalDevice,
-    VkSurfaceKHR        surface
-)
-{
-    QueueFamilyIndices queueFamilyIndices = init_QueueFamilyIndices();
+/// @param instance 调用该函数需要传入一个 VkInstance 句柄
+EX_API void destroySurface(VkInstance instance, VkSurfaceKHR surface);
 
-    // 1.查询队列族 Properties
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, 
-        &queueFamilyCount, 
-        NULL);
-    
-    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice,
-        &queueFamilyCount,
-        queueFamilies);
-    
-    // 2.遍历队列族 Properties
-    for (int i = 0; i < queueFamilyCount; i++)
-    {
-        if (queueFamilies[i].queueCount < 1)
-            continue;
-        
-        // 检查其队列 flags
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            queueFamilyIndices.graphicsSupport = i;
 
-        // 检查其是否支持呈现
-        VkBool32 supportsPresentation = VK_FALSE;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice,
-            i,
-            surface,
-            &supportsPresentation);
-        if (supportsPresentation == VK_TRUE)
-            queueFamilyIndices.presentationSupport = i;
-    }
-
-    return queueFamilyIndices;
-
-}
-
-// /// @brief 查询给定物理设备所拥有的队列族，并按其队列支持相关信息填充 `QueueFamilyIndices`
-// /// 结构体中的索引字段以返回.
-// ///
-// /// 该函数仅考虑并填充 GRAPHICS Support 索引字段.
-// /// @param physicalDevice 
-// ///
-// /// @return 仅填充 GRAPHICS Support 索引字段后的 `QueueFamilyIndices` 结构体
-// QueueFamilyIndices find_queue_families_only_graphics(VkPhysicalDevice physicalDevice)
-// {
-//     QueueFamilyIndices queueFamilyIndices = init_QueueFamilyIndices();
-
-//     uint32_t queueFamilyCount = 0;
-//     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, 
-//         &queueFamilyCount, 
-//         NULL);
-    
-//     VkQueueFamilyProperties queueFamilies[queueFamilyCount];
-//     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice,
-//         &queueFamilyCount,
-//         queueFamilies);
-    
-//     for (int i = 0; i < queueFamilyCount; i++)
-//     {
-//         if (queueFamilies[i].queueCount < 1)
-//             continue;
-        
-//         // 检查其队列 flags
-//         if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-//             queueFamilyIndices.graphicsSupport = i;
-//     }
-
-//     return queueFamilyIndices;
-// }
-
-/// @brief 查询给定物理设备是否有队列族同时支持图形命令和（给定 Surface 的）呈现.
+/// @brief 查询可用物理设备并尝试选择可用的显卡作 PhysicalDevice.
 ///
-/// @param queueFamilyIndex 查询到有队列族满足条件后会将其索引赋值给该指针变量供调用者使用（反
-/// 之则会被赋值为 -1）
+/// @param instance 调用该函数需要传入一个 VkInstance 句柄
+/// @param surface 调用该函数需要传入一个 VkSurfaceKHR 句柄
 ///
-/// @return `true` 当查询到有队列族满足条件，反之为 `false`
-bool has_queue_family_supports_both_graphics_and_presentation(
+/// @return 返回一个可用的 PhysicalDevice 句柄（当发生错误时返回 `NULL`）
+EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
+
+/// @brief 该函数用于检查传入的物理设备的某个属性/支持功能是否符合要求.
+///
+/// （至于具体要求详见函数）
+///
+/// @return `true` 当物理设备符合所有要求时，反之返回 `false`
+bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+
+void dump_physical_device_properties(VkPhysicalDevice physicalDevice);
+
+
+/// @brief 根据给定物理设备创建逻辑设备.
+///
+/// @param graphicsQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（graphics）
+/// @param presentationQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（presentation）
+///
+/// @return 返回新创建的 VkDevice 句柄（当发生错误时返回 `NULL`）
+EX_API VkDevice createLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    int*                queueFamilyIndex
-)
-{
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, 
-        &queueFamilyCount, 
-        NULL);
+    VkQueue*            graphicsQueue,
+    VkQueue*            presentationQueue
+);
 
-    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice,
-        &queueFamilyCount,
-        queueFamilies);
 
-    for (int i = 0; i < queueFamilyCount; i++)
-    {
-        if (queueFamilies[i].queueCount < 1)    // 我想不通有什么b显卡有队列族没队列的
-            continue;
-
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-        {
-            VkBool32 supportsPresentation = VK_FALSE;
-            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice,
-                i,
-                surface,
-                &supportsPresentation);
-            
-            // 找到符合条件的马上设置传入队列族索引并返回 true
-            if (supportsPresentation == VK_TRUE)
-            {
-                *queueFamilyIndex = i;
-                return true;
-            }
-        }
-    }
-
-    *queueFamilyIndex = -1;     // 设为 -1 表未找到
-    return false;
-}
+/// @brief 销毁给定的 VkDevice.
+EX_API void destroyLogicalDevice(VkDevice device);
