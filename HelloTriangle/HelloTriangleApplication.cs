@@ -70,7 +70,7 @@ public class HelloTriangleApplication
         VulkanRenderer.DestroySurface(instance, surface);
         VulkanRenderer.DestroyInstance(instance);
         
-        window.Dispose();
+        Windowing.DestroyWindow(window);
         Windowing.Terminate();
     }
     

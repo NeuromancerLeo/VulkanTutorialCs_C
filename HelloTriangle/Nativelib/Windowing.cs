@@ -14,10 +14,10 @@ public static partial class Windowing
     private static partial Window initializeWindow(int width, int height, string title);
 
     [LibraryImport(library)]
-    private static partial void destroyWindow(IntPtr window);
+    private static partial void destroyWindow(Window window);
 
     [LibraryImport(library)]
-    private static partial int windowShouldClose(IntPtr window);
+    private static partial int windowShouldClose(Window window);
 
     [LibraryImport(library)]
     private static partial void pollEvents();
@@ -43,7 +43,7 @@ public static partial class Windowing
     /// <param name="window">要销毁的窗口</param>
     public static void DestroyWindow(Window window)
     {
-        destroyWindow(window.DangerousGetHandle());
+        destroyWindow(window);
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public static partial class Windowing
     /// <returns><c>true</c> 如果窗口的 Close 标志位为 1.</returns>
     public static bool WindowShouldClose(Window window)
     {
-        if (windowShouldClose(window.DangerousGetHandle()) == 1)
+        if (windowShouldClose(window) == 1)
             return true;
 
         return false;

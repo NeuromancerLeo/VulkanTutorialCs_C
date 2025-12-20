@@ -4,6 +4,7 @@ namespace HelloTriangle.Nativelib;
 
 /// <summary>
 /// GLFWwindow 的托管 SafeHandle 包装.
+/// <para>销毁：请使用 <see cref="Windowing"/> 中对应的 Destroy 函数而不是使用 Dispose！</para>
 /// </summary>
 public class Window : SafeHandleZeroOrMinusOneIsInvalid
 {
@@ -11,11 +12,6 @@ public class Window : SafeHandleZeroOrMinusOneIsInvalid
 
     protected override bool ReleaseHandle()
     {
-        if(handle == IntPtr.Zero)
-            return false;
-
-        Windowing.DestroyWindow(this);
-
         return true;
     }
 }
