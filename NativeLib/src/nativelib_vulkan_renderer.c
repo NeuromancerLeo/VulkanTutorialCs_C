@@ -314,9 +314,33 @@ bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
             ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredDeviceExtensions[i]);
     }
 
-    // TODO: is_subset 判断一个数组是否是另一个数组的子集
+    bool hasOneNoFound = false;
+    // (is subset) 判断一个数组是否是另一个数组的子集
+    for (int i = 0; i < requiredDeviceExtensionCount; i++)
+    {
+        bool found = false;
+        for (int j = 0; j < extensionCount; j++)
+        {
+            // strcmp 只有在两个字符串完全相等时才会返回 0（false）
+            if (strcmp(requiredDeviceExtensions[i], extensions[j].extensionName))
+                continue;
 
-    return false;
+            found = true;
+            break;
+        }
+
+        if (!found)
+        {
+            fprintf(stderr,
+                    "Not supported device extension: %s,"
+                    "can't found in available VkDevice extensions!\n",
+                    requiredDeviceExtensions[i]);
+
+            hasOneNoFound = true;
+        }
+    }
+
+    return !hasOneNoFound;
 }
 
 void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
