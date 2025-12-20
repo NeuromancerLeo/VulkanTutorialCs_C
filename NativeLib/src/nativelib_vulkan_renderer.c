@@ -382,6 +382,9 @@ EX_API VkDevice createLogicalDevice(
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
 
+    uint32_t requiredDeviceExtensionCount = 
+        sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
+
     VkDeviceCreateInfo createInfo = {};
 
     if (useSingleQueue)
@@ -400,7 +403,8 @@ EX_API VkDevice createLogicalDevice(
         createInfo.pQueueCreateInfos        = &queueCreateInfo;
         createInfo.queueCreateInfoCount     = 1;
         createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = 0;
+        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
+        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
     }
     else
     {
@@ -428,7 +432,8 @@ EX_API VkDevice createLogicalDevice(
         createInfo.pQueueCreateInfos        = queueCreateInfos;
         createInfo.queueCreateInfoCount     = 2;
         createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = 0;
+        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
+        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
     }
 
     // 4.创建逻辑设备
