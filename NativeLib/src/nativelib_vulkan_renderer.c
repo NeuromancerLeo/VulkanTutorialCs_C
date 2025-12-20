@@ -1,30 +1,8 @@
 #include "nativelib_vulkan_renderer.h"
-#include "nativelib.h"
+#include "queue_family_indices.h"
 #include "ansiecs.h"
 
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
 
-#ifdef DEBUG
-    const bool enableValidationLayers = true;
-#else
-    const bool enableValidationLayers = false;
-#endif
-
-const char* validationLayers[] = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-
-bool check_layer_support_properties(void);
-void check_extension_properties(void);
-/// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
-/// @param  
-/// @return 返回新创建的 VkInstance 句柄（当发生错误时返回 `NULL`）
 EX_API VkInstance createInstance(void)
 {
     // 0.检查验证层是否开启并可用
@@ -95,8 +73,6 @@ EX_API VkInstance createInstance(void)
     return instance;
 }
 
-/// @brief 查询对 VkInstance 可用的层并打印出来，并检查请求的层是否可用.
-/// @return 当检查到有请求的层不可用时，该函数会打印相关信息，并返回 `false`
 bool check_layer_support_properties(void)
 {
     uint32_t layerCount = 0;
@@ -162,7 +138,6 @@ bool check_layer_support_properties(void)
     return true;
 }
 
-/// @brief 查询对 Vulkan Instance 可用的扩展并打印出来.
 void check_extension_properties(void)
 {
     uint32_t extensionCount = 0;
@@ -193,7 +168,6 @@ void check_extension_properties(void)
 }
 
 
-/// @brief 销毁给定的 VkInstance.
 EX_API void destroyInstance(VkInstance instance)
 {
     if (instance == VK_NULL_HANDLE) return;
@@ -201,16 +175,46 @@ EX_API void destroyInstance(VkInstance instance)
     vkDestroyInstance(instance, NULL);
 
     fprintf(stdout, 
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyInstance！\n" ESC_RESET);
+        ESC_LTALIC "%s %s " ESC_RESET
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyInstance！\n" ESC_RESET,
+        __DATE__, __TIME__);
 }
 
 
-bool is_physical_device_suitable(VkPhysicalDevice physicalDevice);
-void dump_physical_device_properties(VkPhysicalDevice physicalDevice);
-/// @brief 查询可用物理设备并尝试选择可用的显卡作 PhysicalDevice.
-/// @param instance 调用该函数需要传入一个 VkInstance 句柄
-/// @return 返回一个可用的 PhysicalDevice 句柄（当发生错误时返回 `NULL`）
-EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
+EX_API VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
+{
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+
+    VkResult result = glfwCreateWindowSurface(instance, window, NULL, &surface);
+    if (result != VK_SUCCESS)
+    {
+        fprintf(stderr,
+            "Faild to create a VkSurfaceKHR! Error Code(VkResult): %d\n",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkSurfaceKHR！\n",
+        __DATE__, __TIME__);
+
+    return surface;
+}
+
+
+EX_API void destroySurface(VkInstance instance, VkSurfaceKHR surface)
+{
+    vkDestroySurfaceKHR(instance, surface, NULL);
+
+    fprintf(stdout, 
+        ESC_LTALIC "%s %s " ESC_RESET
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySurfaceKHR！\n" ESC_RESET,
+        __DATE__, __TIME__);
+}
+
+
+EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
 {
     // 1.查询可用的物理设备
     uint32_t deviceCount = 0;
@@ -230,7 +234,7 @@ EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     for (int i = 0; i < deviceCount; i++)
     {
-        if (is_physical_device_suitable(physicalDevices[i]))
+        if (is_physical_device_suitable(physicalDevices[i], surface))
         {
             physicalDevice = physicalDevices[i];
             break;
@@ -253,19 +257,17 @@ EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
     return physicalDevice;
 }
 
-/// @brief 该函数用于检查传入的物理设备的某个属性/支持功能是否符合要求.
-///
-/// （至于具体要求详见函数）
-/// @return `true` 当物理设备符合所有要求时，反之返回 `false`
-bool is_physical_device_suitable(VkPhysicalDevice physicalDevice)
+bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
 {   
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-    QueueFamilyIndices queueFamilyIndices = find_queue_families(physicalDevice);
+    QueueFamilyIndices queueFamilyIndices = 
+        find_queue_families(physicalDevice, surface);
 
-    return queueFamilyIndices.graphicsFamily >= 0 
-        && properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU; 
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+        && queueFamilyIndices.graphicsSupport >= 0 
+        && queueFamilyIndices.presentationSupport >= 0;
 }
 
 void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
@@ -282,30 +284,79 @@ void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
 }
 
 
-/// @brief 根据给定物理设备创建逻辑设备.
-/// @return 返回新创建的 VkDevice 句柄（当发生错误时返回 `NULL`）
-EX_API VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice)
+EX_API VkDevice createLogicalDevice(
+    VkPhysicalDevice    physicalDevice,
+    VkSurfaceKHR        surface,
+    VkQueue*            graphicsQueue,
+    VkQueue*            presentationQueue
+)
 {
-    QueueFamilyIndices queueFamilyIndices = find_queue_families(physicalDevice);
+    int queueFamilyIndex = -1;
+    bool useSingleQueue = 
+        has_queue_family_supports_both_graphics_and_presentation(physicalDevice,
+            surface,
+            &queueFamilyIndex);
+    
+    VkDeviceQueueCreateInfo queueCreateInfo = {};   // 单队列族单队列
 
-    // 1.指定创建队列要用到的 VkDeviceQueueCreateInfo (GRAPHICS)
-    VkDeviceQueueCreateInfo queueCreateInfoG = {};
-    queueCreateInfoG.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfoG.queueFamilyIndex   = queueFamilyIndices.graphicsFamily;
-    queueCreateInfoG.queueCount         = 1;
-    float queuePriority = 1.0f;
-    queueCreateInfoG.pQueuePriorities   = &queuePriority;   // 表优先级数组，所以是指针
+    VkDeviceQueueCreateInfo queueCreateInfoG = {};  // 双队列族双队列
+    VkDeviceQueueCreateInfo queueCreateInfoP = {};  //
+    VkDeviceQueueCreateInfo queueCreateInfos[2];
+    QueueFamilyIndices queueFamilyIndices = 
+                find_queue_families(physicalDevice, surface);
 
-    // 2.指定 VkPhysicalDeviceFeatures
-    VkPhysicalDeviceFeatures deviceFeatures = {};   // 默认
+    float queuePriorities = 1.0f;
 
-    // 3.指定 VkDeviceCreatInfo
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+
     VkDeviceCreateInfo createInfo = {};
-    createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pQueueCreateInfos        = &queueCreateInfoG;
-    createInfo.queueCreateInfoCount     = 1;
-    createInfo.pEnabledFeatures         = &deviceFeatures;
-    createInfo.enabledExtensionCount    = 0;
+
+    if (useSingleQueue)
+    {
+        // 1.指定创建队列要用到的 VkDeviceQueueCreateInfo
+        queueCreateInfo.sType               = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex    = queueFamilyIndex;
+        queueCreateInfo.queueCount          = 1;
+        queueCreateInfo.pQueuePriorities    = &queuePriorities;
+
+        // 2.指定 VkPhysicalDeviceFeatures
+        // 默认
+
+        // 3.指定 VkDeviceCreatInfo
+        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos        = &queueCreateInfo;
+        createInfo.queueCreateInfoCount     = 1;
+        createInfo.pEnabledFeatures         = &deviceFeatures;
+        createInfo.enabledExtensionCount    = 0;
+    }
+    else
+    {
+        // (GRAPHICS)
+        queueCreateInfoG.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfoG.queueFamilyIndex   = queueFamilyIndices.graphicsSupport;
+        queueCreateInfoG.queueCount         = 1;
+        float queuePrioritiesG = 1.0f;
+        queueCreateInfoG.pQueuePriorities   = &queuePrioritiesG;
+
+        // (Presentation)
+        queueCreateInfoP.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfoP.queueFamilyIndex   = queueFamilyIndices.presentationSupport;
+        queueCreateInfoP.queueCount         = 1;
+        float queuePrioritiesP = 1.0f;
+        queueCreateInfoP.pQueuePriorities   = &queuePrioritiesP;
+
+        queueCreateInfos[0] = queueCreateInfoG;
+        queueCreateInfos[1] = queueCreateInfoP;
+
+        // VkPhysicalDeviceFeatures
+        // 默认
+
+        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos        = queueCreateInfos;
+        createInfo.queueCreateInfoCount     = 2;
+        createInfo.pEnabledFeatures         = &deviceFeatures;
+        createInfo.enabledExtensionCount    = 0;
+    }
 
     // 4.创建逻辑设备
     VkDevice device = VK_NULL_HANDLE;
@@ -322,36 +373,48 @@ EX_API VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice)
         ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkDevice！\n",
         __DATE__, __TIME__);
 
+    // 5.out 参数形式返回创建好的 VkQueue
+    if (useSingleQueue)
+    {
+        vkGetDeviceQueue(device, queueFamilyIndex, 0, graphicsQueue);
+        vkGetDeviceQueue(device, queueFamilyIndex, 0, presentationQueue);
+    }
+    else
+    {
+        vkGetDeviceQueue(device, 
+            queueFamilyIndices.graphicsSupport, 
+            0, 
+            graphicsQueue);
+        vkGetDeviceQueue(device, 
+            queueFamilyIndices.presentationSupport, 
+            0, 
+            presentationQueue);
+    }
+
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "获取了一个 VkQueue (for graphics)\n",
+        __DATE__, __TIME__);
+
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "获取了一个 VkQueue (for presentation)\n",
+        __DATE__, __TIME__);
+
+    fprintf(stdout, "Using Single Queue: ");
+    if (useSingleQueue)
+        fprintf(stdout, "true (Queue Family Index: %d)\n", queueFamilyIndex);
+    else
+        fprintf(stdout, "false\n");
+
     return device;
 }
 
 
-/// @brief 在成功创建 VkDevice 后，调用该函数以获取（与 VkDevice 同时创建的）
-/// GRAPHICS 队列的句柄.
-/// @param physicalDevice 调用该函数需要传入对应的 VkPhysicalDevice 句柄
-/// @param device 调用该函数需要传入对应的 VkDevice 句柄
-/// @return 传入 VkDevice 的 GRAPHICS 队列的句柄
-EX_API VkQueue getGraphicsQueue(VkPhysicalDevice physicalDevice, VkDevice device)
-{
-    QueueFamilyIndices queueFamilyIndices = find_queue_families(physicalDevice);
-
-    VkQueue graphicsQueue;
-    // 中间两个数分别对应 VkDeviceQueueCreateInfo 的 queueFamilyIndex 和 queueCount
-    vkGetDeviceQueue(device, queueFamilyIndices.graphicsFamily, 0, &graphicsQueue);
-
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "获取了一个 VkQueue (for GRAPHICS)\n",
-        __DATE__, __TIME__);
-
-    return graphicsQueue;
-}
-
-
-/// @brief 销毁给定的 VkDevice.
 EX_API void destroyLogicalDevice(VkDevice device)
 {
     vkDestroyDevice(device, NULL);
 
     fprintf(stdout, 
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyDevice\n" ESC_RESET);
+        ESC_LTALIC "%s %s " ESC_RESET
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyDevice！\n" ESC_RESET,
+        __DATE__, __TIME__);
 }
