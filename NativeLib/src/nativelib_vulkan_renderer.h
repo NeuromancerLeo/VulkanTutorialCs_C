@@ -19,6 +19,10 @@ const char* validationLayers[] = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+const char* requiredDeviceExtensions[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 /// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
 /// 
 /// @return 返回新创建的 VkInstance 句柄（当发生错误时返回 `NULL`）
@@ -27,10 +31,10 @@ EX_API VkInstance createInstance(void);
 /// @brief 查询对 VkInstance 可用的层并打印出来，并检查请求的层是否可用.
 ///
 /// @return 当检查到有请求的层不可用时，该函数会打印相关信息，并返回 `false`
-bool check_layer_support_properties(void);
+bool check_instance_layer_support_properties(void);
 
 /// @brief 查询对 Vulkan Instance 可用的扩展并打印出来.
-void check_extension_properties(void);
+void check_instance_extension_properties(void);
 
 
 /// @brief 销毁给定的 VkInstance.
@@ -67,6 +71,11 @@ EX_API VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR sur
 ///
 /// @return `true` 当物理设备符合所有要求时，反之返回 `false`
 bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+
+/// @brief 查询给定物理设备可用的扩展并打印出来，并检查请求的扩展是否可用
+///
+/// @return 当检查到有请求的扩展不可用时，该函数会打印相关信息，并返回 `false`
+bool check_device_extension_properties(VkPhysicalDevice physicalDevice);
 
 void dump_physical_device_properties(VkPhysicalDevice physicalDevice);
 

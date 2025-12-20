@@ -6,7 +6,7 @@
 EX_API VkInstance createInstance(void)
 {
     // 0.检查验证层是否开启并可用
-    if (enableValidationLayers && !check_layer_support_properties())
+    if (enableValidationLayers && !check_instance_layer_support_properties())
     {
         fprintf(stderr, "Validation layers requested, but not available!\n");
 
@@ -23,7 +23,7 @@ EX_API VkInstance createInstance(void)
     appInfo.apiVersion                  = VK_API_VERSION_1_3;
 
     // 1.5.查询所有可用扩展
-    check_extension_properties();
+    check_instance_extension_properties();
 
     // 2.获取 GLFW 所需扩展的名称标识
     uint32_t glfwExtensionCount = 0;
@@ -73,7 +73,7 @@ EX_API VkInstance createInstance(void)
     return instance;
 }
 
-bool check_layer_support_properties(void)
+bool check_instance_layer_support_properties(void)
 {
     uint32_t layerCount = 0;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
@@ -101,8 +101,7 @@ bool check_layer_support_properties(void)
             layers[i].layerName);
     }
     // 打印我们请求的层名
-    fprintf(stdout,
-        "Application required validation layers:\n");
+    fprintf(stdout, "Application required validation layers:\n");
     
     uint32_t validationLayersCount = 
         sizeof(validationLayers) / sizeof(validationLayers[0]);
@@ -138,7 +137,7 @@ bool check_layer_support_properties(void)
     return true;
 }
 
-void check_extension_properties(void)
+void check_instance_extension_properties(void)
 {
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
@@ -262,12 +261,62 @@ bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR s
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
+    bool extensionsSupported = 
+        check_device_extension_properties(physicalDevice);
+
     QueueFamilyIndices queueFamilyIndices = 
         find_queue_families(physicalDevice, surface);
 
     return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+        && extensionsSupported
         && queueFamilyIndices.graphicsSupport >= 0 
         && queueFamilyIndices.presentationSupport >= 0;
+}
+
+bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
+{
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
+
+    fprintf(stdout,
+        "%s: Found" ESC_FCOLOR_BRIGHT_GREEN " %u " ESC_RESET
+        "available VkDevice extensions:\n",
+        __func__, extensionCount);
+
+    if (extensionCount < 1)
+    {
+        fprintf(stderr, 
+            ESC_FCOLOR_RED
+            "    No avaliable VkDevice extensions could be found!\n" ESC_RESET);
+        return false;
+    }
+
+    VkExtensionProperties extensions[extensionCount];
+    vkEnumerateDeviceExtensionProperties(physicalDevice, 
+        NULL, 
+        &extensionCount, 
+        extensions);
+
+    for (int i = 0; i < extensionCount; i++)
+    {
+        fprintf(stdout,
+            ESC_FCOLOR_BRIGHT_GREEN "    %s\n" ESC_RESET,
+            extensions[i].extensionName);
+    }
+
+    fprintf(stdout, "Application required device extensions:\n");
+
+    uint32_t requiredDeviceExtensionsCount = 
+        sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
+    for (int i = 0; i < requiredDeviceExtensionsCount ; i++)
+    {
+        fprintf(stdout,
+            ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredDeviceExtensions[i]);
+    }
+
+    // TODO: is_subset 判断一个数组是否是另一个数组的子集
+
+    return false;
 }
 
 void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
