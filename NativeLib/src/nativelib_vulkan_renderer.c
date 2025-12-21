@@ -1,5 +1,6 @@
 #include "nativelib_vulkan_renderer.h"
 #include "queue_family_indices.h"
+#include "swapchain_support_details.h"
 #include "ansi_esc.h"
 
 
@@ -261,16 +262,31 @@ bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR s
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-    bool extensionsSupported = 
-        check_device_extension_properties(physicalDevice);
+    bool extensionsSupported = check_device_extension_properties(physicalDevice);
 
     QueueFamilyIndices queueFamilyIndices = 
         find_queue_families(physicalDevice, surface);
 
+    bool swapchainSupported = false;
+    if (extensionsSupported)
+    {
+        SwapchainSupportDetails swapchainSupportDetails = 
+            query_swapchain_support_details(physicalDevice, surface);
+
+        if (swapchainSupportDetails.formats != NULL 
+            && swapchainSupportDetails.presentModes != NULL)
+        {
+            swapchainSupported = true;
+        }
+
+        free_swapchain_support_details(&swapchainSupportDetails);
+    }
+
     return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU    // 是否独显
-        && extensionsSupported                                      // 是否支持请求的扩展
-        && queueFamilyIndices.graphicsSupport >= 0                  // 是否队列支持图形
-        && queueFamilyIndices.presentationSupport >= 0;             // 是否队列族支持呈现
+        && extensionsSupported                                  // 是否支持请求的扩展
+        && queueFamilyIndices.graphicsSupport >= 0              // 是否队列支持图形
+        && queueFamilyIndices.presentationSupport >= 0          // 是否队列族支持呈现
+        && swapchainSupported;                  // 是否满足给定 Surface 的交换链创建要求
 }
 
 bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
