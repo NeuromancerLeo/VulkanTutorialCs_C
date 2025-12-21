@@ -1,6 +1,6 @@
 #include "nativelib_vulkan_renderer.h"
 #include "queue_family_indices.h"
-#include "ansiecs.h"
+#include "ansi_esc.h"
 
 
 EX_API VkInstance createInstance(void)
@@ -267,10 +267,10 @@ bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR s
     QueueFamilyIndices queueFamilyIndices = 
         find_queue_families(physicalDevice, surface);
 
-    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-        && extensionsSupported
-        && queueFamilyIndices.graphicsSupport >= 0 
-        && queueFamilyIndices.presentationSupport >= 0;
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU    // 是否独显
+        && extensionsSupported                                      // 是否支持请求的扩展
+        && queueFamilyIndices.graphicsSupport >= 0                  // 是否队列支持图形
+        && queueFamilyIndices.presentationSupport >= 0;             // 是否队列族支持呈现
 }
 
 bool check_device_extension_properties(VkPhysicalDevice physicalDevice)

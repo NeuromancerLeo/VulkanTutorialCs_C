@@ -3,7 +3,10 @@
 #include <vulkan/vulkan.h>
 #include <stdbool.h>
 
-/// @brief 该结构体定义物理设备可能拥有的队列族类型及其索引.
+/// @brief 该结构体定义物理设备拥有的队列族类型及其索引, 以作为 选取物理设备 \ 创建队列
+/// 时的重要依据.
+///
+/// 通过调用 find_queue_families 函数来获取一个该结构体.
 ///
 /// (索引值为 -1 表未找到)
 typedef struct QueueFamilyIndices

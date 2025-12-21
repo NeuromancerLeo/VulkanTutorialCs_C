@@ -1,11 +1,11 @@
 #include "nativelib_windowing.h"
-
+#include "ansi_esc.h"
 
 EX_API GLFWwindow* initializeWindow(int width, int height, const char* title)
 {
     if (!glfwInit())
     {
-        fprintf(stderr, "failed to initialize glfw!");
+        fprintf(stderr, ESC_FCOLOR_BRIGHT_RED "Failed to initialize glfw!" ESC_RESET);
         return NULL;
     }
         
