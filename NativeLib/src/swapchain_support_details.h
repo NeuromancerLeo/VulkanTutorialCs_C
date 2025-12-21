@@ -60,7 +60,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     {
         fprintf(stderr, 
             ESC_FCOLOR_BRIGHT_RED 
-            "No avaliable surface format could be found!" ESC_RESET);
+            "No avaliable surface format could be found!\n" ESC_RESET);
 
         supportDetails.formats = NULL;
     }
@@ -86,7 +86,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     {
         fprintf(stderr, 
             ESC_FCOLOR_BRIGHT_RED 
-            "No avaliable surface present mode could be found!" ESC_RESET);
+            "No avaliable surface present mode could be found!\n" ESC_RESET);
 
         supportDetails.presentModes = NULL;
     }
