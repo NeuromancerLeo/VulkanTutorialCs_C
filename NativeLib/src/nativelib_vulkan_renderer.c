@@ -512,3 +512,103 @@ EX_API void destroyLogicalDevice(VkDevice device)
         ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyDevice！\n" ESC_RESET,
         __DATE__, __TIME__);
 }
+
+
+EX_API VkSwapchainKHR createSwapchain(
+    GLFWwindow*         window,
+    VkSurfaceKHR        surface,
+    VkPhysicalDevice    physicalDevice, 
+    VkDevice            device
+)
+{
+    // 1.获取交换链支持信息
+    SwapchainSupportDetails supportDetails = 
+        query_swapchain_support_details(physicalDevice, surface);
+
+    // 2.选择理想的 surface 格式、交换范围、交换链呈现模式和 image 数
+    VkSurfaceFormatKHR surfaceFormat =
+        get_optimal_surface_format(physicalDevice, surface);
+
+    VkExtent2D extent = get_swap_exten(physicalDevice, surface, window);
+
+    VkPresentModeKHR presentMode =
+        get_optimal_prensent_mode(physicalDevice, surface);
+
+    // 避免驱动等待，设置为 min + 1 个
+    uint32_t imageCount = supportDetails.capabilities.minImageCount + 1;
+    // 限制 image 的数量（0 是特殊值，表没有最大值限制）
+    if (supportDetails.capabilities.maxImageCount > 0)
+    {
+        imageCount = imageCount > supportDetails.capabilities.maxImageCount ?
+            supportDetails.capabilities.maxImageCount : imageCount;
+    }
+
+    // 3. 指定 VkSwapchainCreateInfoKHR
+    VkSwapchainCreateInfoKHR createInfo = {};
+    createInfo.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface                  = surface;
+
+    createInfo.oldSwapchain             = VK_NULL_HANDLE;
+
+    createInfo.imageArrayLayers         = 1;
+    createInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfo.imageFormat              = surfaceFormat.format;
+    createInfo.imageColorSpace          = surfaceFormat.colorSpace;
+    createInfo.imageExtent              = extent;
+    createInfo.presentMode              = presentMode;
+    createInfo.minImageCount            = imageCount;
+
+    createInfo.preTransform             = supportDetails.capabilities.currentTransform;
+    createInfo.compositeAlpha           = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.clipped                  = VK_TRUE;  // 启用窗口遮挡裁切
+
+    // vvv 处理 ImageSharingMode vvv
+
+    QueueFamilyIndices queueFamilyIndices = 
+        find_queue_families(physicalDevice, surface);
+
+    uint32_t pQueueFamilyIndices[] = 
+        {queueFamilyIndices.graphicsSupport, queueFamilyIndices.presentationSupport};
+
+    // 若使用单队列族单队列的
+    if (has_queue_family_supports_both_graphics_and_presentation(physicalDevice,
+            surface, NULL))
+    {
+       // 独占模式，一个 image 同时只能被一个队列族所有，跨队列族需要显式转移所有权
+       createInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+    }
+    // 使用双队列族双队列的
+    else 
+    {
+       // 并发模式，一个 image 可以跨队列族使用，不需要显式转移所有权
+       createInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+       createInfo.queueFamilyIndexCount = 2;
+       createInfo.pQueueFamilyIndices   = pQueueFamilyIndices;
+    }
+    
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    VkResult result = vkCreateSwapchainKHR(device, &createInfo, NULL, &swapchain);
+    if (result != VK_SUCCESS)
+    {
+        fprintf(stderr,
+            "Failed to create a VkSwapchainKHR! Error Code(VkResult): %d\n", result);
+
+        return VK_NULL_HANDLE;
+    }
+    
+    free_swapchain_support_details(&supportDetails);
+
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkSwapchainKHR！\n",
+        __DATE__, __TIME__);
+
+    return swapchain;
+}
+
+
+EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
+{
+    vkDestroySwapchainKHR(device, swapchain, NULL);
+}

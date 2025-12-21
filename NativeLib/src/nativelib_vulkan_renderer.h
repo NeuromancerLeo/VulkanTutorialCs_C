@@ -96,3 +96,24 @@ EX_API VkDevice createLogicalDevice(
 
 /// @brief 销毁给定的 VkDevice.
 EX_API void destroyLogicalDevice(VkDevice device);
+
+
+/// @brief 根据给定窗口句柄和设备创建交换链.
+///
+/// @param window 给定窗口句柄
+/// @param surface 给定 Surface 句柄
+/// @param physicalDevice 给定物理设备句柄
+/// @param device 给定设备句柄
+///
+/// @return 返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回 `NULL`）
+EX_API VkSwapchainKHR createSwapchain(
+    GLFWwindow*         window,
+    VkSurfaceKHR        surface,
+    VkPhysicalDevice    physicalDevice, 
+    VkDevice            device
+);
+
+
+/// @brief 销毁给定 VkSwapchainKHR.
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain);
