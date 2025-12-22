@@ -14,6 +14,8 @@ public class HelloTriangleApplication
     VkQueue graphicsQueue = null!;
     VkQueue presentationQueue = null!;
 
+    VkSwapchainKHR swapchain = null!;
+
     public void Run()
     {
         InitializeWindow();
@@ -52,6 +54,10 @@ public class HelloTriangleApplication
         if (presentationQueue.IsInvalid)
             throw new InvalidOperationException("Failed to get a VkQueue (for presentation).");
         
+        swapchain = VulkanRenderer.CreateSwapchain(window, surface, physicalDevice, device);
+        if (swapchain.IsInvalid)
+            throw new InvalidOperationException("Faild to create a VkSwapchain.");
+
     }
   
     private void MainLoop()
@@ -65,6 +71,8 @@ public class HelloTriangleApplication
     private void CleanUp()
     {
         Console.WriteLine($"{nameof(CleanUp)}:");
+
+        VulkanRenderer.DestroySwapchain(device, swapchain);
 
         VulkanRenderer.DestroyLogicalDevice(device);
         VulkanRenderer.DestroySurface(instance, surface);

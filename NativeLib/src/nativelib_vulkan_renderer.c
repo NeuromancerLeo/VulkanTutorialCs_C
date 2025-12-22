@@ -611,4 +611,9 @@ EX_API VkSwapchainKHR createSwapchain(
 EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
 {
     vkDestroySwapchainKHR(device, swapchain, NULL);
+
+    fprintf(stdout, 
+        ESC_LTALIC "%s %s " ESC_RESET
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySwapchainKHR！\n" ESC_RESET,
+        __DATE__, __TIME__);
 }

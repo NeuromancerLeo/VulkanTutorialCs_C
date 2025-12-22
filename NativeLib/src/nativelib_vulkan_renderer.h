@@ -114,6 +114,6 @@ EX_API VkSwapchainKHR createSwapchain(
 );
 
 
-/// @brief 销毁给定 VkSwapchainKHR.
+/// @brief 销毁给定的 VkSwapchainKHR.
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain);

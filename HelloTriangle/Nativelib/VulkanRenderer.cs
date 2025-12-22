@@ -36,6 +36,15 @@ public static partial class VulkanRenderer
     [LibraryImport(library)]
     private static partial void destroyLogicalDevice(VkDevice device);
 
+    [LibraryImport(library)]
+    private static partial VkSwapchainKHR createSwapchain(Window window,
+                                                          VkSurfaceKHR surface,
+                                                          VkPhysicalDevice physicalDevice,
+                                                          VkDevice device);
+
+    [LibraryImport(library)]
+    private static partial void destroySwapchain(VkDevice device,
+                                                 VkSwapchainKHR swapchain);
 
     /// <summary>
     /// 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
@@ -105,7 +114,6 @@ public static partial class VulkanRenderer
                 out presentationQueue);
     }
 
-
     /// <summary>
     /// 销毁给定的 VkDevice.
     /// </summary>
@@ -115,4 +123,28 @@ public static partial class VulkanRenderer
         destroyLogicalDevice(device);
     }
     
+    /// <summary>
+    /// 根据给定窗口句柄和设备创建交换链.
+    /// </summary>
+    /// <param name="window">给定窗口句柄</param>
+    /// <param name="surface">给定 Surface 句柄</param>
+    /// <param name="physicalDevice">给定物理设备句柄</param>
+    /// <param name="device">给定设备句柄</param>
+    /// <returns>返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回空句柄）</returns>
+    public static VkSwapchainKHR CreateSwapchain(Window window, 
+                                                 VkSurfaceKHR surface,
+                                                 VkPhysicalDevice physicalDevice,
+                                                 VkDevice device)
+    {
+        return createSwapchain(window, surface, physicalDevice, device);
+    }
+
+    /// <summary>
+    /// 销毁给定的 VkSwapchainKHR.
+    /// </summary>
+    /// <param name="device">调用该函数需要传入一个对应的 VkDevice 句柄</param>
+    public static void DestroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
+    {
+        destroySwapchain(device, swapchain);
+    }
 }
