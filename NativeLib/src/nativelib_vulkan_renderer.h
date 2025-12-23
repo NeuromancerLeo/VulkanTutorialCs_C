@@ -104,16 +104,22 @@ EX_API void destroyLogicalDevice(VkDevice device);
 /// @param surface 给定 Surface 句柄
 /// @param physicalDevice 给定物理设备句柄
 /// @param device 给定设备句柄
+/// @param pSwapchainImageCount 输出参数，交换链创建后其输出交换链图像句柄数组的大小
+/// @param ppSwapchainImages 输出参数，其输出一个指向交换链图像句柄数组的指针
 ///
 /// @return 返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回 `NULL`）
 EX_API VkSwapchainKHR createSwapchain(
     GLFWwindow*         window,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
-    VkDevice            device
+    VkDevice            device,
+    uint32_t*           pSwapchainImageCount,
+    VkImage**           ppSwapchainImages    
 );
 
 
 /// @brief 销毁给定的 VkSwapchainKHR.
+///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param swapchain 要销毁的交换链句柄
 EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain);

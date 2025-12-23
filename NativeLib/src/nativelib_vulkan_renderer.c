@@ -518,9 +518,20 @@ EX_API VkSwapchainKHR createSwapchain(
     GLFWwindow*         window,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
-    VkDevice            device
+    VkDevice            device,
+    uint32_t*           pSwapchainImageCount,
+    VkImage**           ppSwapchainImages
 )
 {
+    if (pSwapchainImageCount == NULL || ppSwapchainImages == NULL)
+    {
+        fprintf(stderr,
+            "调用 %s 函数失败！其输出参数不允许传入 NULL！",
+            __func__);
+
+        return VK_NULL_HANDLE;
+    }
+
     // 1.获取交换链支持信息
     SwapchainSupportDetails supportDetails = 
         query_swapchain_support_details(physicalDevice, surface);
@@ -562,8 +573,7 @@ EX_API VkSwapchainKHR createSwapchain(
     createInfo.compositeAlpha           = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.clipped                  = VK_TRUE;  // 启用窗口遮挡裁切
 
-    // vvv 处理 ImageSharingMode vvv
-
+    // 3.5.处理 ImageSharingMode
     QueueFamilyIndices queueFamilyIndices = 
         find_queue_families(physicalDevice, surface);
 
@@ -585,9 +595,8 @@ EX_API VkSwapchainKHR createSwapchain(
        createInfo.queueFamilyIndexCount = 2;
        createInfo.pQueueFamilyIndices   = pQueueFamilyIndices;
     }
-    
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+    // 4.创建交换链
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkResult result = vkCreateSwapchainKHR(device, &createInfo, NULL, &swapchain);
     if (result != VK_SUCCESS)
@@ -600,6 +609,58 @@ EX_API VkSwapchainKHR createSwapchain(
     
     free_swapchain_support_details(&supportDetails);
 
+    // 5.处理输出参数（交换链图像句柄数组和其大小）
+    uint32_t actualImageCount = 0;
+    result = vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, NULL);
+    if (result != VK_SUCCESS)
+    {
+        fprintf(stderr,
+            "Failed to get swapchain image count! Error Code(VkResult): %d\n", result);
+        
+        *pSwapchainImageCount = 0;
+        *ppSwapchainImages = NULL;
+
+        vkDestroySwapchainKHR(device, swapchain, NULL);     // 销毁刚刚创建的交换链
+
+        return VK_NULL_HANDLE;
+    }
+
+    *pSwapchainImageCount = actualImageCount;
+
+    // 为数组分配内存
+    *ppSwapchainImages = (VkImage*)malloc(sizeof(VkImage) * actualImageCount);
+    if (*ppSwapchainImages == NULL)
+    {
+        fprintf(stderr,
+            ESC_FCOLOR_BRIGHT_RED "malloc err: "
+            "Failed to malloc for swapchain image array!\n" ESC_RESET);
+
+        *pSwapchainImageCount = 0;
+        *ppSwapchainImages = NULL;
+
+        vkDestroySwapchainKHR(device, swapchain, NULL);
+
+        return VK_NULL_HANDLE;
+    }
+
+    result = vkGetSwapchainImagesKHR(device,
+                swapchain,
+                &actualImageCount, 
+                *ppSwapchainImages);
+    if (result != VK_SUCCESS)
+    {
+        fprintf(stderr,
+            "Failed to get swapchain images! Error Code(VkResult): %d\n", result);
+        
+        *pSwapchainImageCount = 0;
+        free(*ppSwapchainImages);   // 释放数组内存
+        *ppSwapchainImages = NULL;
+
+        vkDestroySwapchainKHR(device, swapchain, NULL);
+
+        return VK_NULL_HANDLE;
+    }
+
     fprintf(stdout,
         ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkSwapchainKHR！\n",
         __DATE__, __TIME__);
@@ -610,10 +671,19 @@ EX_API VkSwapchainKHR createSwapchain(
 
 EX_API void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
 {
+    if (device == VK_NULL_HANDLE)
+    {
+        fprintf(stderr,
+            "%s : 传入了无效的 VkDevice 句柄！无法继续销毁给定的交换链.\n",
+            __func__);
+
+        return;
+    }
+
     vkDestroySwapchainKHR(device, swapchain, NULL);
 
     fprintf(stdout, 
         ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySwapchainKHR！\n" ESC_RESET,
+        ESC_FCOLOR_BRIGHT_MAGENTA "销毁了一个 VkSwapchainKHR！\n" ESC_RESET,
         __DATE__, __TIME__);
 }
