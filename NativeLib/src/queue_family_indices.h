@@ -3,7 +3,10 @@
 #include <vulkan/vulkan.h>
 #include <stdbool.h>
 
-/// @brief 该结构体定义物理设备可能拥有的队列族类型及其索引.
+/// @brief 该结构体定义物理设备拥有的队列族类型及其索引, 以作为 选取物理设备 \ 创建队列
+/// 时的重要依据.
+///
+/// 通过调用 find_queue_families 函数来获取一个该结构体.
 ///
 /// (索引值为 -1 表未找到)
 typedef struct QueueFamilyIndices
@@ -77,7 +80,7 @@ QueueFamilyIndices find_queue_families(
 /// @brief 查询给定物理设备是否有队列族同时支持图形命令和（给定 Surface 的）呈现.
 ///
 /// @param queueFamilyIndex 查询到有队列族满足条件后会将其索引赋值给该指针变量供调用者使用（反
-/// 之则会被赋值为 -1）
+/// 之则会被赋值为 -1）(若不需要该参数传入 `NULL` 即可)
 ///
 /// @return `true` 当查询到有队列族满足条件，反之为 `false`
 bool has_queue_family_supports_both_graphics_and_presentation(
@@ -112,12 +115,16 @@ bool has_queue_family_supports_both_graphics_and_presentation(
             // 找到符合条件的马上设置传入队列族索引并返回 true
             if (supportsPresentation == VK_TRUE)
             {
-                *queueFamilyIndex = i;
+                if (queueFamilyIndex != NULL)
+                    *queueFamilyIndex = i;
+
                 return true;
             }
         }
     }
 
-    *queueFamilyIndex = -1;     // 设为 -1 表未找到
-    return false;
+    if (queueFamilyIndex != NULL)
+        *queueFamilyIndex = -1;     // 设为 -1 表未找到
+    
+        return false;
 }
