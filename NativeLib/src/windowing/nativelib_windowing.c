@@ -1,5 +1,7 @@
 #include "nativelib_windowing.h"
-#include "ansi_esc.h"
+
+#include "../common/ansi_esc.h"
+
 
 EX_API GLFWwindow* initializeWindow(int width, int height, const char* title)
 {

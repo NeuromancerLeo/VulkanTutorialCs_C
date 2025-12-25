@@ -25,6 +25,10 @@ public static partial class Windowing
     [LibraryImport(library)]
     private static partial void terminate();
 
+
+    public static Window Handle {get; private set;} = null!;
+
+
     /// <summary>
     /// 初始化 GLFW 库并创建一个窗口.
     /// </summary>
@@ -32,18 +36,18 @@ public static partial class Windowing
     /// <param name="height"></param>
     /// <param name="title"></param>
     /// <returns>一个创建好的 <see cref="Window"/> 对象，使用 <see cref="Window.IsInvalid"/> 来检查其是否有效</returns>
-    public static Window InitializeWindow(int width, int height, string title)
+    public static void InitializeWindow(int width, int height, string title)
     {
-        return initializeWindow(width, height, title);
+        Handle = initializeWindow(width, height, title);
     }
     
     /// <summary>
     /// 销毁窗口.
     /// </summary>
     /// <param name="window">要销毁的窗口</param>
-    public static void DestroyWindow(Window window)
+    public static void DestroyWindow()
     {
-        destroyWindow(window);
+        destroyWindow(Handle);
     }
 
     /// <summary>
@@ -51,9 +55,9 @@ public static partial class Windowing
     /// </summary>
     /// <param name="window">给定窗口</param>
     /// <returns><c>true</c> 如果窗口的 Close 标志位为 1.</returns>
-    public static bool WindowShouldClose(Window window)
+    public static bool WindowShouldClose()
     {
-        if (windowShouldClose(window) == 1)
+        if (windowShouldClose(Handle) == 1)
             return true;
 
         return false;
