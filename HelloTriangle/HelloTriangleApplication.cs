@@ -5,64 +5,37 @@ namespace HelloTriangle;
 
 public class HelloTriangleApplication
 {
-    Window window = null!;
-
-    VkInstance instance = null!;
-    VkSurfaceKHR surface = null!;
-    VkPhysicalDevice physicalDevice = null!;
-    VkDevice device = null!;
-    VkQueue graphicsQueue = null!;
-    VkQueue presentationQueue = null!;
-
-    VkSwapchainKHR swapchain = null!;
-
     public void Run()
     {
-        InitializeWindow();
-        InitializeVulkan();
-        MainLoop();
-        CleanUp();
+        try
+        {
+            InitializeWindow();
+            InitializeRenderer();
+            MainLoop();
+        }
+        finally
+        {
+            CleanUp();
+        }
     }
 
     private void InitializeWindow()
     {
-        window = Windowing.InitializeWindow(800, 600, "Vulkan");
+        Windowing.InitializeWindow(800, 600, "Vulkan");
         
-        if (window.IsInvalid)
+        if (Windowing.Handle.IsInvalid)
             throw new InvalidOperationException("Failed to create a window.");
     }
 
-    private void InitializeVulkan()
+    public void InitializeRenderer()
     {
-        instance = VulkanRenderer.CreateInstance();
-        if (instance.IsInvalid) 
-            throw new InvalidOperationException("Failed to create a VkInstance.");
-
-        surface = VulkanRenderer.CreateSurface(instance, window);
-        if (surface.IsInvalid)
-            throw new InvalidOperationException("Failed to create a VkSurfaceKHR.");
-
-        physicalDevice = VulkanRenderer.PickPhysicalDevice(instance, surface);
-        if (physicalDevice.IsInvalid)
-            throw new InvalidOperationException("Failed to pick a VkPhysicalDevice.");
-
-        device = VulkanRenderer.CreateLogicalDevice(physicalDevice, surface, out graphicsQueue, out presentationQueue);
-        if (device.IsInvalid)
-            throw new InvalidOperationException("Failed to create a VkDevice.");
-        if (graphicsQueue.IsInvalid)
-            throw new InvalidOperationException("Failed to get a VkQueue (for graphics).");
-        if (presentationQueue.IsInvalid)
-            throw new InvalidOperationException("Failed to get a VkQueue (for presentation).");
-        
-        swapchain = VulkanRenderer.CreateSwapchain(window, surface, physicalDevice, device);
-        if (swapchain.IsInvalid)
-            throw new InvalidOperationException("Faild to create a VkSwapchain.");
-
+        if (!Renderer.Initialize(Windowing.Handle))
+            throw new InvalidOperationException("Failed to initialize renderer!");
     }
-  
+
     private void MainLoop()
     {
-        while (!Windowing.WindowShouldClose(window))
+        while (!Windowing.WindowShouldClose())
         {
             Windowing.PollEvents();
         }
@@ -72,13 +45,9 @@ public class HelloTriangleApplication
     {
         Console.WriteLine($"{nameof(CleanUp)}:");
 
-        VulkanRenderer.DestroySwapchain(device, swapchain);
+        Renderer.Release();
 
-        VulkanRenderer.DestroyLogicalDevice(device);
-        VulkanRenderer.DestroySurface(instance, surface);
-        VulkanRenderer.DestroyInstance(instance);
-        
-        Windowing.DestroyWindow(window);
+        Windowing.DestroyWindow();
         Windowing.Terminate();
     }
     
