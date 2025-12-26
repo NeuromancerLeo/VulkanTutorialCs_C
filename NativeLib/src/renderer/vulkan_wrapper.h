@@ -93,3 +93,32 @@ VkSwapchainKHR createSwapchain(
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param swapchain 要销毁的交换链句柄
 void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain);
+
+
+/// @brief 成功创建交换链后调用该函数为交换链中的每一个图像创建基本的图像视图（VkImageView）.
+///
+/// @param device 调用该函数需要传入对应的 VkDevice 句柄
+/// @param swapchainImageFormat 指定要创建的图像视图的图像格式
+/// @param swapchainImageCount 指定要创建的图像视图的数量
+/// @param pSwapchainImages 调用该函数需要传入对应的交换链图像数组
+///
+/// @return 创建成功后返回一个属于交换链的图像视图数组，失败则返回 `NULL`
+VkImageView* createSwapchainImageViews(
+    VkDevice        device,
+    VkFormat        swapchainImageFormat,
+    uint32_t        swapchainImageCount,
+    const VkImage*  pSwapchainImages
+);
+
+
+/// @brief 销毁交换链所有的图像视图.
+///
+/// @param device 调用该函数需要传入对应的 VkDevice 句柄
+/// @param swapchainImageCount 交换链图像总数
+/// @param ppSwapchainImageViews 要销毁的交换链图像视图的数组的地址
+///（数组本身也会被销毁以释放内存）
+void destroySwapchainImageViews(
+    VkDevice        device,
+    uint32_t        swapchainImageCount,
+    VkImageView**   ppSwapchainImageViews
+);

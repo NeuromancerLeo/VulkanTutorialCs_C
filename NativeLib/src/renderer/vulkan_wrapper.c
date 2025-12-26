@@ -558,6 +558,7 @@ VkSwapchainKHR createSwapchain(
     VkExtent2D*         pSwapchainExtent        // 指向 VkExtent2D 变量的地址，用于输出
 )
 {
+    // 0.检查参数是否有效
     if (window == NULL)
     {
         fprintf(stderr,
@@ -675,13 +676,11 @@ VkSwapchainKHR createSwapchain(
 
     *pSwapchainImageCount = actualImageCount;
 
-    // 为数组分配内存
-    *ppSwapchainImages = (VkImage*)malloc(sizeof(VkImage) * actualImageCount);
+    // 为交换链图像句柄数组分配内存
+    *ppSwapchainImages = (VkImage*)calloc(actualImageCount, sizeof(VkImage));
     if (*ppSwapchainImages == NULL)
     {
-        fprintf(stderr,
-            ESC_FCOLOR_BRIGHT_RED "malloc err: "
-            "Failed to malloc for swapchain image array!\n" ESC_RESET);
+        fprintf(stderr, "%s : 交换链图像句柄数组内存分配失败！函数退出.\n", __func__);
 
         *pSwapchainImageCount = 0;
         *ppSwapchainImages = NULL;
@@ -692,9 +691,9 @@ VkSwapchainKHR createSwapchain(
     }
 
     result = vkGetSwapchainImagesKHR(device,
-                swapchain,
-                &actualImageCount, 
-                *ppSwapchainImages);
+                 swapchain,
+                 &actualImageCount, 
+                 *ppSwapchainImages);
     if (result != VK_SUCCESS)
     {
         fprintf(stderr,
@@ -726,6 +725,111 @@ void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
 
     fprintf(stdout, 
         ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySwapchainKHR\n" ESC_RESET,
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySwapchainKHR！\n" ESC_RESET,
         __DATE__, __TIME__);
+}
+
+
+VkImageView* createSwapchainImageViews(
+    VkDevice        device,
+    VkFormat        swapchainImageFormat,
+    uint32_t        swapchainImageCount,
+    const VkImage*  pSwapchainImages
+)
+{
+    if (device == VK_NULL_HANDLE
+        || swapchainImageCount == 0
+        || pSwapchainImages == NULL)
+    {
+        fprintf(stderr, "%s : 传入了无效参数！无法为交换链图像创建视图.\n", __func__);
+
+        return NULL;
+    }
+
+    // 1.分配交换链图像视图句柄数组
+    VkImageView* pSwapchainImageViews = 
+        (VkImageView*)calloc(swapchainImageCount, sizeof(VkImageView));
+    if (pSwapchainImageViews == NULL)
+    {
+        fprintf(stderr, "%s : 交换链图像视图句柄数组内存分配失败！函数退出.\n", __func__);
+
+        return NULL;
+    }
+
+    // 2.在循环体内创建 VkImageView
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        VkImageViewCreateInfo createInfo = {};
+        createInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image    = pSwapchainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format   = swapchainImageFormat;
+
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;    // 通道默认映射
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel   = 0;
+        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount     = 1;
+
+        VkResult result = vkCreateImageView(device, 
+                              &createInfo, 
+                              NULL, 
+                              &pSwapchainImageViews[i]);
+        if (result != VK_SUCCESS)
+        {
+            fprintf(stderr, 
+                "Failed to create VkImageViews(%u) for swapchain!"
+                " Error Code(VkResult): %d\n",
+                i, result);
+
+            // 清理已创建的 VkImageView
+            for (uint32_t j = 0; j < i; j++)
+                vkDestroyImageView(device, pSwapchainImageViews[j], NULL);
+
+            free(pSwapchainImageViews);   // 释放刚刚分配的数组
+
+            return NULL;
+        }
+    }
+
+    return pSwapchainImageViews;
+}
+
+
+void destroySwapchainImageViews(
+    VkDevice        device,
+    uint32_t        swapchainImageCount,
+    VkImageView**   ppSwapchainImageViews   // 要销毁的图像视图的数组的地址
+)
+{
+    if (device == VK_NULL_HANDLE
+        || swapchainImageCount == 0
+        || ppSwapchainImageViews == NULL)
+    {
+        fprintf(stderr, "%s : 传入了无效参数！没有销毁任何交换链图像视图.\n", __func__);
+
+        return;
+    }
+
+    // 遍历数组依次销毁
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkDestroyImageView(device, (*ppSwapchainImageViews)[i], NULL);
+
+        fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET
+        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyImageView（s，%u）！\n" ESC_RESET,
+        __DATE__, __TIME__, i);
+    }
+
+    // 释放数组占用的内存
+    free(*ppSwapchainImageViews);
+    *ppSwapchainImageViews = NULL;
+
+    return;
 }
