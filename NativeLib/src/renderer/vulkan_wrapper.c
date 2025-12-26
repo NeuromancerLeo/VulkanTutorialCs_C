@@ -14,6 +14,85 @@ static const char* requiredDeviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+static bool check_instance_layer_properties(void);
+static void check_instance_extension_properties(void);
+static bool check_device_extension_properties(VkPhysicalDevice physicalDevice);
+static bool is_physical_device_suitable(
+    VkPhysicalDevice    physicalDevice, 
+    VkSurfaceKHR        surface
+);
+static void dump_physical_device_properties(VkPhysicalDevice physicalDevice);
+
+
+VkInstance createInstance(void)
+{
+    // 0.检查验证层是否开启并可用
+    if (enableValidationLayers && !check_instance_layer_properties())
+    {
+        fprintf(stderr, "Validation layers requested, but not available!\n");
+
+        return VK_NULL_HANDLE;
+    }
+
+    // 1.指定 ApplicationInfo
+    VkApplicationInfo appInfo = {};
+    appInfo.sType                       = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName            = "Hello Triangle";
+    appInfo.applicationVersion          = VK_MAKE_VERSION(0, 0, 1);
+    appInfo.pEngineName                 = "No Engine";
+    appInfo.engineVersion               = VK_MAKE_VERSION(0, 0, 1);
+    appInfo.apiVersion                  = VK_API_VERSION_1_3;
+
+    // 1.5.查询所有可用扩展
+    check_instance_extension_properties();
+
+    // 2.获取 GLFW 所需扩展的名称标识
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    // 打印
+    {
+        fprintf(stdout, "GLFW required instance extensions:\n");
+        for (int i = 0; i < glfwExtensionCount; i++)
+        {
+            fprintf(stdout,
+                ESC_FCOLOR_BRIGHT_BLUE "    %s\n" ESC_RESET,
+                glfwExtensions[i]);
+        }
+    }
+
+    // 3.指定 InstanceCreateInfo
+    VkInstanceCreateInfo createInfo = {};
+    createInfo.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo         = &appInfo;
+    createInfo.enabledExtensionCount    = glfwExtensionCount;   // 这两行启用 GLFW 
+    createInfo.ppEnabledExtensionNames  = glfwExtensions;       // 的所需扩展
+    createInfo.enabledLayerCount        = 0;
+    if (enableValidationLayers)     // 若启用验证层
+    { 
+        uint32_t requiredValidationLayerCount = 
+            sizeof(requiredValidationLayers) / sizeof(requiredValidationLayers[0]);
+
+        createInfo.enabledLayerCount    = requiredValidationLayerCount;
+        createInfo.ppEnabledLayerNames  = requiredValidationLayers;
+    }
+
+    // 4.创建 Vulkan 实例
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult result = vkCreateInstance(&createInfo, NULL, &instance);
+    if (result != VK_SUCCESS)
+    {
+        fprintf(stderr, 
+            "Failed to create a VkInstance! Error Code(VkResult): %d\n", result);
+        
+        return VK_NULL_HANDLE;
+    }
+
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkInstance！\n",
+        __DATE__, __TIME__);
+
+    return instance;
+}
 
 /// @brief 查询对 VkInstance 可用的层并打印出来，并检查请求的层是否可用.
 ///
@@ -112,76 +191,6 @@ static void check_instance_extension_properties(void)
     
 }
 
-VkInstance createInstance(void)
-{
-    // 0.检查验证层是否开启并可用
-    if (enableValidationLayers && !check_instance_layer_properties())
-    {
-        fprintf(stderr, "Validation layers requested, but not available!\n");
-
-        return VK_NULL_HANDLE;
-    }
-
-    // 1.指定 ApplicationInfo
-    VkApplicationInfo appInfo = {};
-    appInfo.sType                       = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName            = "Hello Triangle";
-    appInfo.applicationVersion          = VK_MAKE_VERSION(0, 0, 1);
-    appInfo.pEngineName                 = "No Engine";
-    appInfo.engineVersion               = VK_MAKE_VERSION(0, 0, 1);
-    appInfo.apiVersion                  = VK_API_VERSION_1_3;
-
-    // 1.5.查询所有可用扩展
-    check_instance_extension_properties();
-
-    // 2.获取 GLFW 所需扩展的名称标识
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    // 打印
-    {
-        fprintf(stdout, "GLFW required instance extensions:\n");
-        for (int i = 0; i < glfwExtensionCount; i++)
-        {
-            fprintf(stdout,
-                ESC_FCOLOR_BRIGHT_BLUE "    %s\n" ESC_RESET,
-                glfwExtensions[i]);
-        }
-    }
-
-    // 3.指定 InstanceCreateInfo
-    VkInstanceCreateInfo createInfo = {};
-    createInfo.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo         = &appInfo;
-    createInfo.enabledExtensionCount    = glfwExtensionCount;   // 这两行启用 GLFW 
-    createInfo.ppEnabledExtensionNames  = glfwExtensions;       // 的所需扩展
-    createInfo.enabledLayerCount        = 0;
-    if (enableValidationLayers)     // 若启用验证层
-    { 
-        uint32_t requiredValidationLayerCount = 
-            sizeof(requiredValidationLayers) / sizeof(requiredValidationLayers[0]);
-
-        createInfo.enabledLayerCount    = requiredValidationLayerCount;
-        createInfo.ppEnabledLayerNames  = requiredValidationLayers;
-    }
-
-    // 4.创建 Vulkan 实例
-    VkInstance instance = VK_NULL_HANDLE;
-    VkResult result = vkCreateInstance(&createInfo, NULL, &instance);
-    if (result != VK_SUCCESS)
-    {
-        fprintf(stderr, 
-            "Failed to create a VkInstance! Error Code(VkResult): %d\n", result);
-        
-        return VK_NULL_HANDLE;
-    }
-
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkInstance！\n",
-        __DATE__, __TIME__);
-
-    return instance;
-}
-
 
 void destroyInstance(VkInstance instance)
 {   
@@ -226,6 +235,89 @@ void destroySurface(VkInstance instance, VkSurfaceKHR surface)
         __DATE__, __TIME__);
 }
 
+
+VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
+{
+    // 1.查询可用的物理设备
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
+    if (deviceCount == 0)
+    {
+        fprintf(stderr, "Failed to find GPUs with Vulkan support!\n");
+        
+        return VK_NULL_HANDLE;
+    }
+
+    // 2.为查询到的物理设备分配数组
+    VkPhysicalDevice physicalDevices[deviceCount];
+    vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices);
+
+    // 3.尝试选择可用的显卡
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    for (int i = 0; i < deviceCount; i++)
+    {
+        if (is_physical_device_suitable(physicalDevices[i], surface))
+        {
+            physicalDevice = physicalDevices[i];
+            break;
+        }
+    }
+
+    if (physicalDevice == VK_NULL_HANDLE)
+    {
+        fprintf(stderr, "Failed to find a suitable GPU!\n");
+
+        return VK_NULL_HANDLE;
+    }
+        
+    fprintf(stdout,
+        ESC_LTALIC "%s %s " ESC_RESET "成功选取了一个物理设备！\n",
+        __DATE__, __TIME__);
+
+    dump_physical_device_properties(physicalDevice);
+
+    return physicalDevice;
+}
+
+/// @brief 该函数用于检查传入的物理设备的某个属性/支持功能是否符合要求.
+///
+/// （至于具体要求详见函数）
+///
+/// @return `true` 当物理设备符合所有要求时，反之返回 `false`
+static bool is_physical_device_suitable(
+    VkPhysicalDevice    physicalDevice, 
+    VkSurfaceKHR        surface
+)
+{   
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+    bool extensionsSupported = check_device_extension_properties(physicalDevice);
+
+    QueueFamilyIndices queueFamilyIndices = 
+        find_queue_families(physicalDevice, surface);
+
+    bool swapchainSupported = false;
+    if (extensionsSupported)
+    {
+        SwapchainSupportDetails swapchainSupportDetails = 
+            query_swapchain_support_details(physicalDevice, surface);
+
+        if (swapchainSupportDetails.formats != NULL 
+            && swapchainSupportDetails.presentModes != NULL)
+        {
+            swapchainSupported = true;
+        }
+
+        free_swapchain_support_details(&swapchainSupportDetails);
+    }
+
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU    // 是否独显
+        && extensionsSupported                                  // 是否支持请求的扩展
+        && queueFamilyIndices.graphicsSupport >= 0              // 是否队列支持图形
+        && queueFamilyIndices.presentationSupport >= 0          // 是否队列族支持呈现
+        && swapchainSupported;                  // 是否满足给定 Surface 的交换链创建要求
+}
 
 /// @brief 查询给定物理设备可用的扩展并打印出来，并检查请求的扩展是否可用
 ///
@@ -300,43 +392,6 @@ static bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
     return !hasOneNoFound;
 }
 
-/// @brief 该函数用于检查传入的物理设备的某个属性/支持功能是否符合要求.
-///
-/// （至于具体要求详见函数）
-///
-/// @return `true` 当物理设备符合所有要求时，反之返回 `false`
-static bool is_physical_device_suitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
-{   
-    VkPhysicalDeviceProperties properties;
-    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-    bool extensionsSupported = check_device_extension_properties(physicalDevice);
-
-    QueueFamilyIndices queueFamilyIndices = 
-        find_queue_families(physicalDevice, surface);
-
-    bool swapchainSupported = false;
-    if (extensionsSupported)
-    {
-        SwapchainSupportDetails swapchainSupportDetails = 
-            query_swapchain_support_details(physicalDevice, surface);
-
-        if (swapchainSupportDetails.formats != NULL 
-            && swapchainSupportDetails.presentModes != NULL)
-        {
-            swapchainSupported = true;
-        }
-
-        free_swapchain_support_details(&swapchainSupportDetails);
-    }
-
-    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU    // 是否独显
-        && extensionsSupported                                  // 是否支持请求的扩展
-        && queueFamilyIndices.graphicsSupport >= 0              // 是否队列支持图形
-        && queueFamilyIndices.presentationSupport >= 0          // 是否队列族支持呈现
-        && swapchainSupported;                  // 是否满足给定 Surface 的交换链创建要求
-}
-
 static void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
 {
     VkPhysicalDeviceProperties properties;
@@ -348,49 +403,6 @@ static void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
     printf("          Driver Version: %u\n", properties.driverVersion);
     printf("               Vendor ID: %u\n", properties.vendorID);
     printf("--------------------------------------------------------------------\n");
-}
-
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
-{
-    // 1.查询可用的物理设备
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
-    if (deviceCount == 0)
-    {
-        fprintf(stderr, "Failed to find GPUs with Vulkan support!\n");
-        
-        return VK_NULL_HANDLE;
-    }
-
-    // 2.为查询到的物理设备分配数组
-    VkPhysicalDevice physicalDevices[deviceCount];
-    vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices);
-
-    // 3.尝试选择可用的显卡
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    for (int i = 0; i < deviceCount; i++)
-    {
-        if (is_physical_device_suitable(physicalDevices[i], surface))
-        {
-            physicalDevice = physicalDevices[i];
-            break;
-        }
-    }
-
-    if (physicalDevice == VK_NULL_HANDLE)
-    {
-        fprintf(stderr, "Failed to find a suitable GPU!\n");
-
-        return VK_NULL_HANDLE;
-    }
-        
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功选取了一个物理设备！\n",
-        __DATE__, __TIME__);
-
-    dump_physical_device_properties(physicalDevice);
-
-    return physicalDevice;
 }
 
 
