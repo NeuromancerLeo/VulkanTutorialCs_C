@@ -3,11 +3,9 @@
 
 RenderContext* new_render_context()
 {
-    RenderContext* pContext = (RenderContext*)malloc(sizeof(RenderContext));
+    // 分配堆内存
+    RenderContext* pContext = (RenderContext*)calloc(1, sizeof(RenderContext));
     if (!pContext) return NULL;
-
-    // 清 0 初始化
-    memset(pContext, 0, sizeof(RenderContext));
 
     return pContext;
 }
