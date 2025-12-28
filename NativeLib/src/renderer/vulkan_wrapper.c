@@ -22,6 +22,13 @@ static bool is_physical_device_suitable(
     VkSurfaceKHR        surface
 );
 static void dump_physical_device_properties(VkPhysicalDevice physicalDevice);
+static void get_driver_version_string(
+    uint32_t    vendorID,
+    uint32_t    driverVersion,
+    uint32_t*   major,
+    uint32_t*   minor,
+    uint32_t*   patch
+);
 
 
 VkInstance createInstance(void)
@@ -29,7 +36,7 @@ VkInstance createInstance(void)
     // 0.检查验证层是否开启并可用
     if (enableValidationLayers && !check_instance_layer_properties())
     {
-        fprintf(stderr, "Validation layers requested, but not available!\n");
+        log_error("Validation layers requested, but not available!");
 
         return VK_NULL_HANDLE;
     }
@@ -49,16 +56,16 @@ VkInstance createInstance(void)
     // 2.获取 GLFW 所需扩展的名称标识
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+#ifdef DEBUG
     // 打印
+    log_debug("GLFW required instance extensions:");
+    for (int i = 0; i < glfwExtensionCount; i++)
     {
-        fprintf(stdout, "GLFW required instance extensions:\n");
-        for (int i = 0; i < glfwExtensionCount; i++)
-        {
-            fprintf(stdout,
-                ESC_FCOLOR_BRIGHT_BLUE "    %s\n" ESC_RESET,
-                glfwExtensions[i]);
-        }
+        log_debug(ESC_FCOLOR_BLUE "    %s" ESC_RESET,
+            glfwExtensions[i]);
     }
+#endif
 
     // 3.指定 InstanceCreateInfo
     VkInstanceCreateInfo createInfo = {};
@@ -81,15 +88,12 @@ VkInstance createInstance(void)
     VkResult result = vkCreateInstance(&createInfo, NULL, &instance);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr, 
-            "Failed to create a VkInstance! Error Code(VkResult): %d\n", result);
-        
+        log_error("Failed to create a VkInstance! Error Code(VkResult): %d", result);
+
         return VK_NULL_HANDLE;
     }
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkInstance！\n",
-        __DATE__, __TIME__);
+    log_info("成功创建了一个 VkInstance！");
 
     return instance;
 }
@@ -101,39 +105,37 @@ static bool check_instance_layer_properties(void)
 {
     uint32_t layerCount = 0;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
-    fprintf(stdout,
-        "%s: Found" ESC_FCOLOR_BRIGHT_GREEN " %u " ESC_RESET
-        "available VkInstance layers:\n",
-        __func__, layerCount);
     
     if (layerCount < 1)
     {
-        fprintf(stderr, 
-            ESC_FCOLOR_RED
-            "    No avaliable VkInstance layers could be found!\n" ESC_RESET);
+        log_error("No avaliable VkInstance layers could be found!");
+
         return false;
     }
-        
+
     VkLayerProperties layers[layerCount];
     vkEnumerateInstanceLayerProperties(&layerCount, layers);
-    
-    // 打印全部可用层名
-    for (int i = 0; i < layerCount; i++)
-    {
-        fprintf(stdout,
-            ESC_FCOLOR_BRIGHT_GREEN "    %s\n" ESC_RESET,
-            layers[i].layerName);
-    }
-    // 打印我们请求的层名
-    fprintf(stdout, "Application required validation layers:\n");
-    
+
     uint32_t requiredValidationLayerCount = 
         sizeof(requiredValidationLayers) / sizeof(requiredValidationLayers[0]);
+
+#ifdef DEBUG
+    // 打印全部可用层名
+    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+        "available VkInstance layers:",
+        __func__, layerCount);
+    for (int i = 0; i < layerCount; i++)
+    {
+        log_debug(ESC_FCOLOR_GREEN "    %s" ESC_RESET, layers[i].layerName);
+    }
+    // 打印我们请求的层名
+    log_debug("Application required validation layers:");
+
     for (int i = 0; i < requiredValidationLayerCount ; i++)
     {
-        fprintf(stdout,
-            ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredValidationLayers[i]);
+        log_debug(ESC_FCOLOR_BLUE "    %s" ESC_RESET, requiredValidationLayers[i]);
     }
+#endif
 
     // 检查 validationLayer 中的层是否可用
     for (int i = 0; i < requiredValidationLayerCount; i++)
@@ -151,9 +153,9 @@ static bool check_instance_layer_properties(void)
         // 只要有一个找不到就返回 false
         if(!layerFound)
         {
-            fprintf(stderr,
-                "Not supported layer: %s, can't found in available layers!",
+            log_error("Not supported layer: %s, can't found in available layers!",
                 requiredValidationLayers[i]);
+
             return false;
         }
     }
@@ -166,29 +168,26 @@ static void check_instance_extension_properties(void)
 {
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
-    fprintf(stdout,
-        "%s: Found" ESC_FCOLOR_BRIGHT_GREEN " %u " ESC_RESET
-        "available VkInstance extensions:\n",
-        __func__, extensionCount);
 
     if (extensionCount < 1)
     {
-        fprintf(stderr, 
-            ESC_FCOLOR_RED
-            "    No avaliable VkInstance extensions could be found!\n" ESC_RESET);
+        log_error("No avaliable VkInstance extensions could be found!");
+
         return;
     }
-    
+
+#ifdef DEBUG
     VkExtensionProperties extensions[extensionCount];
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, extensions);
 
+    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+        "available VkInstance extensions:",
+        __func__, extensionCount);
     for (int i = 0; i < extensionCount; i++)
     {
-        fprintf(stdout,
-            ESC_FCOLOR_BRIGHT_GREEN "    %s\n" ESC_RESET,
-            extensions[i].extensionName);
+        log_debug(ESC_FCOLOR_GREEN "    %s" ESC_RESET, extensions[i].extensionName);
     }
-    
+#endif
 }
 
 
@@ -196,10 +195,7 @@ void destroyInstance(VkInstance instance)
 {   
     vkDestroyInstance(instance, NULL);
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyInstance！\n" ESC_RESET,
-        __DATE__, __TIME__);
+    log_trace("调用了 vkDestroyInstance！");
 }
 
 
@@ -210,16 +206,12 @@ VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
     VkResult result = glfwCreateWindowSurface(instance, window, NULL, &surface);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr,
-            "Faild to create a VkSurfaceKHR! Error Code(VkResult): %d\n",
-            result);
+        log_error("Faild to create a VkSurfaceKHR! Error Code(VkResult): %d", result);
 
         return VK_NULL_HANDLE;
     }
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkSurfaceKHR！\n",
-        __DATE__, __TIME__);
+    log_info("成功创建了一个 VkSurfaceKHR！");
 
     return surface;
 }
@@ -229,10 +221,7 @@ void destroySurface(VkInstance instance, VkSurfaceKHR surface)
 {
     vkDestroySurfaceKHR(instance, surface, NULL);
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySurfaceKHR！\n" ESC_RESET,
-        __DATE__, __TIME__);
+    log_trace("调用了 vkDestroySurfaceKHR！");
 }
 
 
@@ -243,8 +232,8 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
     vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
     if (deviceCount == 0)
     {
-        fprintf(stderr, "Failed to find GPUs with Vulkan support!\n");
-        
+        log_error("Failed to find GPUs with Vulkan support!");
+
         return VK_NULL_HANDLE;
     }
 
@@ -265,14 +254,12 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
 
     if (physicalDevice == VK_NULL_HANDLE)
     {
-        fprintf(stderr, "Failed to find a suitable GPU!\n");
+        log_error("Failed to find a suitable GPU!");
 
         return VK_NULL_HANDLE;
     }
-        
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功选取了一个物理设备！\n",
-        __DATE__, __TIME__);
+
+    log_info("成功选取了一个物理设备！");
 
     dump_physical_device_properties(physicalDevice);
 
@@ -327,16 +314,10 @@ static bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
     uint32_t extensionCount = 0;
     vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL);
 
-    fprintf(stdout,
-        "%s: Found" ESC_FCOLOR_BRIGHT_GREEN " %u " ESC_RESET
-        "available VkDevice extensions:\n",
-        __func__, extensionCount);
-
     if (extensionCount < 1)
     {
-        fprintf(stderr, 
-            ESC_FCOLOR_RED
-            "    No avaliable VkDevice extensions could be found!\n" ESC_RESET);
+        log_error("No avaliable VkDevice extensions could be found!");
+
         return false;
     }
 
@@ -346,22 +327,25 @@ static bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
         &extensionCount, 
         extensions);
 
+    uint32_t requiredDeviceExtensionCount = 
+        sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
+
+#ifdef DEBUG
+    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+        "available VkDevice extensions:",
+        __func__, extensionCount);
     for (int i = 0; i < extensionCount; i++)
     {
-        fprintf(stdout,
-            ESC_FCOLOR_BRIGHT_GREEN "    %s\n" ESC_RESET,
+        log_debug(ESC_FCOLOR_GREEN "    %s" ESC_RESET,
             extensions[i].extensionName);
     }
 
-    fprintf(stdout, "Application required device extensions:\n");
-
-    uint32_t requiredDeviceExtensionCount = 
-        sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
+    log_debug("Application required device extensions:");
     for (int i = 0; i < requiredDeviceExtensionCount; i++)
     {
-        fprintf(stdout,
-            ESC_FCOLOR_BLUE "    %s\n" ESC_RESET, requiredDeviceExtensions[i]);
+        log_debug(ESC_FCOLOR_BLUE "    %s" ESC_RESET, requiredDeviceExtensions[i]);
     }
+#endif
 
     bool hasOneNoFound = false;
     // (is subset) 判断一个数组是否是另一个数组的子集
@@ -380,10 +364,9 @@ static bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
 
         if (!found)
         {
-            fprintf(stderr,
-                    "Not supported device extension: %s,"
-                    "can't found in available VkDevice extensions!\n",
-                    requiredDeviceExtensions[i]);
+            log_error("Not supported device extension: %s,"
+                "can't found in available VkDevice extensions!",
+                requiredDeviceExtensions[i]);
 
             hasOneNoFound = true;
         }
@@ -396,13 +379,92 @@ static void dump_physical_device_properties(VkPhysicalDevice physicalDevice)
 {
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
-    printf("--------------------------------------------------------------------\n");
-    printf("Selected Physical Device: %s\n", properties.deviceName);
-    printf("                    Type: %u\n", properties.deviceType);
-    printf("          Driver Version: %u\n", properties.driverVersion);
-    printf("               Vendor ID: %u\n", properties.vendorID);
-    printf("--------------------------------------------------------------------\n");
+    log_info("--------------------------------------------------------------------");
+    log_info(" Selected Physical Device: %s", properties.deviceName);
+
+    const char* deviceTypeStr = "Unknown";
+    switch (properties.deviceType) 
+    {
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: 
+            deviceTypeStr = "Integrated GPU"; 
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: 
+            deviceTypeStr = "Discrete GPU"; 
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: 
+            deviceTypeStr = "Virtual GPU"; 
+            break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU: 
+            deviceTypeStr = "CPU"; 
+            break;
+        default: break;
+    }
+    log_info("                     Type: %s", deviceTypeStr);
+
+    uint64_t totalMemory = 0;
+    for (uint32_t i = 0; i < memProperties.memoryHeapCount; i++) 
+    {
+        if (!(memProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))
+            continue;
+
+        totalMemory += memProperties.memoryHeaps[i].size;
+    }
+    log_info("Total VRAM (Device Local): %.3f GB",
+        totalMemory / (1024.0f * 1024.0f * 1024.0f));
+
+    uint32_t major, minor, patch;
+    get_driver_version_string(properties.vendorID, 
+        properties.driverVersion, 
+        &major, &minor, &patch);
+    log_info("    Vulkan Driver Version: %u.%u.%u", major, minor, patch);
+    log_info("--------------------------------------------------------------------");
+}
+
+static void get_driver_version_string(
+    uint32_t    vendorID,
+    uint32_t    driverVersion,
+    uint32_t*   major,
+    uint32_t*   minor,
+    uint32_t*   patch
+)
+{
+    switch (vendorID)
+    {
+        case 0x10DE: // NVIDIA
+        {
+            *major = (driverVersion >> 22) & 0x3FF;
+            *minor = (driverVersion >> 14) & 0xFF;
+            *patch = (driverVersion >> 6) & 0xFF;
+            break;
+        }
+        
+        case 0x1002: // AMD
+        {
+            *major = VK_VERSION_MAJOR(driverVersion);
+            *minor = VK_VERSION_MINOR(driverVersion);
+            *patch = VK_VERSION_PATCH(driverVersion);
+            break;
+        }
+        
+        case 0x8086: // Intel
+        {
+            *major = VK_VERSION_MAJOR(driverVersion);
+            *minor = VK_VERSION_MINOR(driverVersion);
+            *patch = VK_VERSION_PATCH(driverVersion);
+            break;
+        }
+        
+        default: // 默认使用标准编码
+        {
+            *major = VK_VERSION_MAJOR(driverVersion);
+            *minor = VK_VERSION_MINOR(driverVersion);
+            *patch = VK_VERSION_PATCH(driverVersion);
+            break;
+        }
+    }
 }
 
 
@@ -490,15 +552,12 @@ VkDevice createLogicalDevice(
     VkResult result = vkCreateDevice(physicalDevice, &createInfo, NULL, &device);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr, 
-            "Failed to create a VkDevice! Error Code(VkResult): %d\n", result);
-        
+        log_error("Failed to create a VkDevice! Error Code(VkResult): %d", result);
+
         return VK_NULL_HANDLE;
     }
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkDevice！\n",
-        __DATE__, __TIME__);
+    log_info("成功创建了一个 VkDevice！");
 
     // 5.out 参数形式返回创建好的 VkQueue
     if (useSingleQueue)
@@ -518,19 +577,15 @@ VkDevice createLogicalDevice(
             presentationQueue);
     }
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "获取了一个 VkQueue (for graphics)\n",
-        __DATE__, __TIME__);
+    log_info("获取了一个 VkQueue (for graphics)");
+    log_info("获取了一个 VkQueue (for presentation)");
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "获取了一个 VkQueue (for presentation)\n",
-        __DATE__, __TIME__);
-
-    fprintf(stdout, "Using Single Queue: ");
+#ifdef DEBUG
     if (useSingleQueue)
-        fprintf(stdout, "true (Queue Family Index: %d)\n", queueFamilyIndex);
+        log_debug("Using Single Queue: true (Queue Family Index: %d)", queueFamilyIndex);
     else
-        fprintf(stdout, "false\n");
+        log_debug("Using Single Queue: false");
+#endif
 
     return device;
 }
@@ -540,10 +595,7 @@ void destroyLogicalDevice(VkDevice device)
 {
     vkDestroyDevice(device, NULL);
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyDevice！\n" ESC_RESET,
-        __DATE__, __TIME__);
+    log_trace("调用了 vkDestroyDevice！");
 }
 
 
@@ -561,9 +613,7 @@ VkSwapchainKHR createSwapchain(
     // 0.检查参数是否有效
     if (window == NULL)
     {
-        fprintf(stderr,
-            "%s : 函数参数错误！传入了无效的 GLFWwindow 句柄！\n",
-            __func__);
+        log_error("%s : 函数参数错误！传入了无效的 GLFWwindow 句柄！", __func__);
 
         return VK_NULL_HANDLE;
     }
@@ -574,9 +624,7 @@ VkSwapchainKHR createSwapchain(
         || pSwapchainImageFormat == NULL
         || pSwapchainExtent == NULL)
     {
-        fprintf(stderr,
-            "%s : 函数参数错误！输出参数不能传入 NULL 地址！\n",
-            __func__);
+        log_error("%s : 函数参数错误！输出参数不能传入 NULL 地址！", __func__);
 
         return VK_NULL_HANDLE;
     }
@@ -650,12 +698,12 @@ VkSwapchainKHR createSwapchain(
     VkResult result = vkCreateSwapchainKHR(device, &createInfo, NULL, &swapchain);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr,
-            "Failed to create a VkSwapchainKHR! Error Code(VkResult): %d\n", result);
+        log_error("Failed to create a VkSwapchainKHR! Error Code(VkResult): %d",
+            result);
 
         return VK_NULL_HANDLE;
     }
-    
+
     free_swapchain_support_details(&supportDetails);
 
     // 5.处理输出参数（交换链图像句柄数组和其大小、交换链图像格式和范围）
@@ -663,9 +711,9 @@ VkSwapchainKHR createSwapchain(
     result = vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, NULL);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr,
-            "Failed to get swapchain image count! Error Code(VkResult): %d\n", result);
-        
+        log_error("Failed to get swapchain image count! Error Code(VkResult): %d",
+            result);
+
         *pSwapchainImageCount = 0;
         *ppSwapchainImages = NULL;
 
@@ -680,7 +728,7 @@ VkSwapchainKHR createSwapchain(
     *ppSwapchainImages = (VkImage*)calloc(actualImageCount, sizeof(VkImage));
     if (*ppSwapchainImages == NULL)
     {
-        fprintf(stderr, "%s : 交换链图像句柄数组内存分配失败！函数退出.\n", __func__);
+        log_error("%s : 交换链图像句柄数组内存分配失败！函数退出.", __func__);
 
         *pSwapchainImageCount = 0;
         *ppSwapchainImages = NULL;
@@ -696,9 +744,8 @@ VkSwapchainKHR createSwapchain(
                  *ppSwapchainImages);
     if (result != VK_SUCCESS)
     {
-        fprintf(stderr,
-            "Failed to get swapchain images! Error Code(VkResult): %d\n", result);
-        
+        log_error("Failed to get swapchain images! Error Code(VkResult): %d", result);
+
         *pSwapchainImageCount = 0;
         free(*ppSwapchainImages);   // 释放数组内存
         *ppSwapchainImages = NULL;
@@ -711,9 +758,7 @@ VkSwapchainKHR createSwapchain(
     *pSwapchainImageFormat = surfaceFormat.format;
     *pSwapchainExtent = extent;
 
-    fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET "成功创建了一个 VkSwapchainKHR！\n",
-        __DATE__, __TIME__);
+    log_info("成功创建了一个 VkSwapchainKHR！");
 
     return swapchain;
 }
@@ -723,10 +768,7 @@ void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
 {
     vkDestroySwapchainKHR(device, swapchain, NULL);
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroySwapchainKHR！\n" ESC_RESET,
-        __DATE__, __TIME__);
+    log_trace("调用了 vkDestroySwapchainKHR！");
 }
 
 
@@ -741,7 +783,7 @@ VkImageView* createSwapchainImageViews(
         || swapchainImageCount == 0
         || pSwapchainImages == NULL)
     {
-        fprintf(stderr, "%s : 传入了无效参数！无法为交换链图像创建视图.\n", __func__);
+        log_error("%s : 传入了无效参数！无法为交换链图像创建视图.", __func__);
 
         return NULL;
     }
@@ -751,7 +793,7 @@ VkImageView* createSwapchainImageViews(
         (VkImageView*)calloc(swapchainImageCount, sizeof(VkImageView));
     if (pSwapchainImageViews == NULL)
     {
-        fprintf(stderr, "%s : 交换链图像视图句柄数组内存分配失败！函数退出.\n", __func__);
+        log_error("%s : 交换链图像视图句柄数组内存分配失败！函数退出.", __func__);
 
         return NULL;
     }
@@ -782,9 +824,8 @@ VkImageView* createSwapchainImageViews(
                               &pSwapchainImageViews[i]);
         if (result != VK_SUCCESS)
         {
-            fprintf(stderr, 
-                "Failed to create VkImageViews(%u) for swapchain!"
-                " Error Code(VkResult): %d\n",
+            log_error("Failed to create VkImageViews(%u) for swapchain!"
+                " Error Code(VkResult): %d",
                 i, result);
 
             // 清理已创建的 VkImageView
@@ -811,7 +852,7 @@ void destroySwapchainImageViews(
         || swapchainImageCount == 0
         || ppSwapchainImageViews == NULL)
     {
-        fprintf(stderr, "%s : 传入了无效参数！没有销毁任何交换链图像视图.\n", __func__);
+        log_error("%s : 传入了无效参数！没有销毁任何交换链图像视图.", __func__);
 
         return;
     }
@@ -821,10 +862,7 @@ void destroySwapchainImageViews(
     {
         vkDestroyImageView(device, (*ppSwapchainImageViews)[i], NULL);
 
-        fprintf(stdout,
-        ESC_LTALIC "%s %s " ESC_RESET
-        ESC_FCOLOR_BRIGHT_MAGENTA "调用了 vkDestroyImageView（s，%u）！\n" ESC_RESET,
-        __DATE__, __TIME__, i);
+        log_trace("调用了 vkDestroyImageView(s，%u)！", i);
     }
 
     // 释放数组占用的内存

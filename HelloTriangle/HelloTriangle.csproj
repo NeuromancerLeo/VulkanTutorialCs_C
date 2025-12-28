@@ -9,7 +9,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <Target Name="CopyNativeDLL_debug" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+  <Target Name="CopyNativeLib_win64_debug" AfterTargets="Build" 
+          Condition="'$(Configuration)' == 'Debug' AND '$(OS)' == 'Windows_NT'">
     <ItemGroup>
       <DLLSource Include="../NativeLib/build/mingw/x64/debug/*.dll"></DLLSource>
     </ItemGroup>
@@ -18,13 +19,35 @@
           SkipUnchangedFiles="True"/>
   </Target>
 
-  <Target Name="CopyNativeDLL_release" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+  <Target Name="CopyNativeLib_win64_release" AfterTargets="Build" 
+          Condition="'$(Configuration)' == 'Release' AND '$(OS)' == 'Windows_NT'">
     <ItemGroup>
       <DLLSource Include="../NativeLib/build/mingw/x64/release/*.dll"></DLLSource>
     </ItemGroup>
-    <Copy SourceFiles="@(DLLSource)/*.dll"
+    <Copy SourceFiles="@(DLLSource)"
           DestinationFolder="$(OutputPath)" 
           SkipUnchangedFiles="True"/>
   </Target>
+
+  <Target Name="CopyNativeLib_linux64_debug" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' AND '$(OS)' == 'Unix'">
+    <ItemGroup>
+      <SOSource Include="../NativeLib/build/linux/x64/debug/*.so"></SOSource>
+    </ItemGroup>
+    <Copy SourceFiles="@(SOSource)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="True"/>
+  </Target>
+
+  <Target Name="CopyNativeLib_linux64_release" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release' AND '$(OS)' == 'Unix'">
+    <ItemGroup>
+      <SOSource Include="../NativeLib/build/linux/x64/release/*.so"></SOSource>
+    </ItemGroup>
+    <Copy SourceFiles="@(SOSource)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="True"/>
+  </Target>
+
 
 </Project>

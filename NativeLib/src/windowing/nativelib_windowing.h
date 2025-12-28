@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common/nativelib.h"
+#include "../common/log.h"
 
 #include <GLFW/glfw3.h>
 #include <stdio.h>

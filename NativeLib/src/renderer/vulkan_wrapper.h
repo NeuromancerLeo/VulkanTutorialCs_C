@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common/ansi_esc.h"
+#include "../common/log.h"
 #include "queue_family_indices.h"
 #include "swapchain_support_details.h"
 

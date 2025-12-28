@@ -3,6 +3,10 @@
 
 RenderContext* new_render_context()
 {
+#ifndef DEBUG
+    log_set_level(LOG_INFO);
+#endif
+
     // 分配堆内存
     RenderContext* pContext = (RenderContext*)calloc(1, sizeof(RenderContext));
     if (!pContext) return NULL;
@@ -12,10 +16,7 @@ RenderContext* new_render_context()
 
 bool create_render_context(GLFWwindow* window, RenderContext* pContext)
 {
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        "开始构建渲染上下文...\n",
-        __DATE__, __TIME__);
+    log_info("开始构建渲染上下文...");
 
     pContext->window = window;                          // 保存窗口句柄
 
@@ -56,33 +57,25 @@ bool create_render_context(GLFWwindow* window, RenderContext* pContext)
     if (!pContext->swapchainImageViews)
         return false;
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        "渲染上下文构建完毕.\n",
-        __DATE__, __TIME__);
+    log_info("渲染上下文构建完毕.");
 
     return true;
 }
 
 void destroy_render_context(RenderContext* pContext)
 {
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        "销毁渲染上下文...\n",
-        __DATE__, __TIME__);
+    log_info("销毁渲染上下文...");
 
     if (!pContext)
     {
-        fprintf(stdout, "%s : 给定渲染上下文地址无效, 退出.\n", __func__);
+        log_info("%s : 给定渲染上下文地址无效, 退出.", __func__);
         return;
     }
 
     if (pContext->instance == VK_NULL_HANDLE)
     {
-        fprintf(stdout, 
-            "%s : 给定渲染上下文不含有效的 VkInstance 句柄，不会销毁任何内容并退出.\n",
+        log_info("%s : 给定渲染上下文不含有效的 VkInstance 句柄，不会销毁任何内容，退出.",
             __func__);
-
         return;
     }
 
@@ -113,10 +106,7 @@ void destroy_render_context(RenderContext* pContext)
     free(pContext);                                                // 释放渲染上下文结构体
     pContext = NULL;                                               // 占用的内存
 
-    fprintf(stdout, 
-        ESC_LTALIC "%s %s " ESC_RESET
-        "销毁渲染上下文完毕.\n",
-        __DATE__, __TIME__);
+    log_info("销毁渲染上下文完毕.");
 
     return;
 }
