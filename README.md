@@ -1,5 +1,6 @@
 ## 如何编译该项目
 
+该项目在 64 位的 Windows 和 Linux 系统下均正常工作:
 #### 1. 下载 [.NET 10.0 SDK](https://dotnet.microsoft.com/zh-cn/download/dotnet/10.0) 并安装
 #### 2. 下载 [Vulkan SDK](https://vulkan.lunarg.com/) 并安装
 #### 3. 下载 [Xmake](https://xmake.io/) 并安装
