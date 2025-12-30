@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common/ansi_esc.h"
+#include "../common/log.h"
 #include "vulkan_wrapper.h"
 
 #include <stdlib.h>

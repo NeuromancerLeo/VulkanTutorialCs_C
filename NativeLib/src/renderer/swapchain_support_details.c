@@ -34,9 +34,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     }
     else
     {
-        fprintf(stderr, 
-            ESC_FCOLOR_BRIGHT_RED 
-            "No avaliable surface format could be found!\n" ESC_RESET);
+        log_error("No avaliable surface format could be found!");
 
         supportDetails.formats = NULL;
     }
@@ -60,9 +58,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     }
     else
     {
-        fprintf(stderr, 
-            ESC_FCOLOR_BRIGHT_RED 
-            "No avaliable surface present mode could be found!\n" ESC_RESET);
+        log_error("No avaliable surface present mode could be found!");
 
         supportDetails.presentModes = NULL;
     }
@@ -112,9 +108,8 @@ VkSurfaceFormatKHR get_optimal_surface_format(
         }
     }
 
-    fprintf(stdout, 
-        "物理设备不支持表面格式 B8G8R8A8_SRGB & SRGB_NONLINEAR_KHR，"
-        "将使用第一个可用的表面格式！\n");
+    log_warn("物理设备不支持表面格式 B8G8R8A8_SRGB & SRGB_NONLINEAR_KHR，"
+        "将使用第一个可用的表面格式！");
 
     return surfaceFormats[0];
 }
@@ -145,9 +140,7 @@ VkPresentModeKHR get_optimal_prensent_mode(
         }
     }
 
-    fprintf(stdout, 
-        "物理设备不支持 MAILBOX 呈现模式，"
-        "将使用 FIFO 呈现模式！\n");
+    log_warn("物理设备不支持 MAILBOX 呈现模式，将使用 FIFO 呈现模式！");
 
     return VK_PRESENT_MODE_FIFO_KHR;
 }

@@ -1,5 +1,14 @@
-add_rules("mode.debug")
-add_defines("DEBUG")
+if is_mode("debug") then 
+    set_symbols("debug")
+    add_defines("DEBUG")
+    set_optimize("none")
+end
+
+if is_mode("release") then 
+    set_symbols("hidden")
+    set_optimize("fastest")
+    set_strip("all")
+end 
 
 set_arch("x64")
 if is_host("windows") then
@@ -20,7 +29,7 @@ target("nativelib_windowing")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/windowing/*.c")
+    add_files("src/windowing/*.c", "src/common/*.c")
 
     add_packages("glfw")
 target_end()
@@ -30,7 +39,7 @@ target("nativelib_renderer")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/renderer/*.c")
+    add_files("src/renderer/*.c", "src/common/*.c")
 
     add_packages("vulkansdk", "glfw")
 target_end()
