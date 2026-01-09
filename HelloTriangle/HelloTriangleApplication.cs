@@ -1,5 +1,6 @@
-using System.Runtime.InteropServices;
-using HelloTriangle.Nativelib;
+using HelloTriangle.Windowing;
+using HelloTriangle.Graphics;
+using HelloTriangle.Graphics.Resources;
 
 namespace HelloTriangle;
 
@@ -21,23 +22,23 @@ public class HelloTriangleApplication
 
     private void InitializeWindow()
     {
-        Windowing.InitializeWindow(800, 600, "Vulkan");
+        Window.Initialize(800, 600, "Vulkan");
         
-        if (Windowing.Handle.IsInvalid)
+        if (Window.Handle.IsInvalid)
             throw new InvalidOperationException("Failed to create a window.");
     }
 
     public void InitializeRenderer()
     {
-        if (!Renderer.Initialize(Windowing.Handle))
+        if (!Renderer.Initialize(Window.Handle))
             throw new InvalidOperationException("Failed to initialize renderer!");
     }
 
     private void MainLoop()
     {
-        while (!Windowing.WindowShouldClose())
+        while (!Window.ShouldClose())
         {
-            Windowing.PollEvents();
+            Window.PollEvents();
         }
     }
 
@@ -47,8 +48,8 @@ public class HelloTriangleApplication
 
         Renderer.Release();
 
-        Windowing.DestroyWindow();
-        Windowing.Terminate();
+        Window.Destroy();
+        Window.Terminate();
     }
     
 }

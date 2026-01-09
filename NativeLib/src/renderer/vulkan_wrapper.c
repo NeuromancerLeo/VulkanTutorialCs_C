@@ -814,9 +814,9 @@ VkImageView* createSwapchainImageViews(
 
         createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         createInfo.subresourceRange.baseMipLevel   = 0;
-        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.levelCount     = 1;     // 不使用 mipmap
         createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount     = 1;
+        createInfo.subresourceRange.layerCount     = 1;     // 单层
 
         VkResult result = vkCreateImageView(device, 
                               &createInfo, 
@@ -834,7 +834,7 @@ VkImageView* createSwapchainImageViews(
 
             free(pSwapchainImageViews);   // 释放刚刚分配的数组
 
-            return NULL;
+            return VK_NULL_HANDLE;
         }
     }
 
@@ -871,3 +871,198 @@ void destroySwapchainImageViews(
 
     return;
 }
+
+
+VkShaderModule createShaderModule(
+    VkDevice        device,
+    uint32_t        wordSize,
+    const uint32_t* spvWords
+)
+{
+    VkShaderModuleCreateInfo createInfo = {};
+    createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = wordSize;
+    createInfo.pCode    = spvWords;
+
+    VkShaderModule shaderModule = VK_NULL_HANDLE;
+    VkResult result = vkCreateShaderModule(device, &createInfo, NULL, &shaderModule);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkShaderModule! Error Code(VkResult): %d",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    return shaderModule;
+}
+
+
+void destroyShaderModule(VkDevice device, VkShaderModule shaderModule)
+{
+    vkDestroyShaderModule(device, shaderModule, NULL);
+}
+
+
+VkPipelineLayout createPipelineLayout(
+    VkDevice                    device,
+    VkPipelineLayoutCreateInfo* pCreateInfo
+)
+{
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkResult result = vkCreatePipelineLayout(device,
+                          pCreateInfo,
+                          NULL,
+                          &pipelineLayout);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkPipelineLayout! Error Code(VkResult): %d",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    return pipelineLayout;
+}
+
+
+void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
+{
+    vkDestroyPipelineLayout(device, pipelineLayout, NULL);
+}
+
+
+void createGraphicsPipeline(
+    VkDevice                                device,
+
+    VkPipelineDynamicStateCreateInfo*       pDynamicStateInfo,
+    VkPipelineViewportStateCreateInfo*      pViewportStateInfo,
+
+    VkPipelineLayout                        pipelineLayout,
+    VkPipelineShaderStageCreateInfo**       ppShaderStatgeInfos,
+
+    VkPipelineVertexInputStateCreateInfo*   pVertexInputStateInfo,
+    VkPipelineInputAssemblyStateCreateInfo* pVertexInputAssemblyInfo,
+
+    VkPipelineRasterizationStateCreateInfo* pRasterizationStateInfo,
+    VkPipelineMultisampleStateCreateInfo*   pMultisamplingStateInfo,
+
+    VkPipelineDepthStencilStateCreateInfo*  pDepthStencilStateInfo,
+    VkPipelineColorBlendStateCreateInfo*    pColorBlendStateInfo
+)
+{
+    // 0.指定使用的动态状态（即不需要静态烘培到管线的状态）
+    // VkDynamicState dynamicStates[] = {
+    //     VK_DYNAMIC_STATE_VIEWPORT,      // 视口大小
+    //     VK_DYNAMIC_STATE_SCISSOR        // 剪裁矩形
+    // };
+
+    // VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};
+    // dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    // dynamicStateInfo.dynamicStateCount = 2;
+    // dynamicStateInfo.pDynamicStates    = dynamicStates;
+
+    // // 对于视口和剪裁矩形，由于我们指定它们为动态的状态，故在这只需要指定它们的数量
+    // // 而不指定具体结构体指针，实际的视口和剪裁矩形将会要在绘制时设置
+    // VkPipelineViewportStateCreateInfo viewportStateInfo = {};
+    // viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    // viewportStateInfo.viewportCount = 1;
+    // viewportStateInfo.scissorCount  = 1;
+
+
+    // // 1.（配置着色器阶段）创建 VkShaderModule
+    // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成后
+    // 我们可以立即调用 vkDestroyShaderModule 进行销毁
+    // VkShaderModule vertexShaderModule =         // 顶点着色器
+    //     create_shader_module(device, vertexSpvWordSize, vertexSpvWords);
+
+    // VkShaderModule fragmentShaderModule =       // 片元着色器
+    //     create_shader_module(device, fragmentSpvWordSize, fragmentSpvWords);
+
+    // // 1.5.（配置着色器阶段）填写 VkPipelineShaderStageCreateInfo
+    // VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};     // 顶点着色器
+    // vertexShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    // vertexShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    // vertexShaderStageInfo.module = vertexShaderModule;
+    // vertexShaderStageInfo.pName  = "main";      // 指定 SPV 的函数入口点
+    //                                             //（SPV 是可以由多个着色器文件编译得来的）
+
+    // VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};   // 片元着色器
+    // fragmentShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    // fragmentShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // fragmentShaderStageInfo.module = fragmentShaderModule;
+    // fragmentShaderStageInfo.pName  = "main";
+
+    // 创建 craeteInfo 数组备用
+    // VkPipelineShaderStageCreateInfo shaderStageInfos[] = {
+    //     vertexShaderStageInfo,
+    //     fragmentShaderStageInfo
+    // };
+
+
+    // // 2.（配置顶点输入阶段）填写 VkPipelineVertexInputStateCreateInfo
+    // // 教程目前为止在着色器里直接硬编码顶点数据, 所以该结构体暂时表示为不需要加载顶点数据
+    // VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
+    // vertexInputStateInfo.sType = 
+    //     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    // vertexInputStateInfo.vertexBindingDescriptionCount   = 0; 
+    // vertexInputStateInfo.pVertexBindingDescriptions      = NULL;
+    // vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
+    // vertexInputStateInfo.pVertexAttributeDescriptions    = NULL;
+
+    // // 2.5（配置顶点输入阶段）填写 VkPipelineInputAssemblyStateCreateInfo
+    // VkPipelineInputAssemblyStateCreateInfo vertexInputAssemblyInfo = {};
+    // vertexInputAssemblyInfo.sType = 
+    //     VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    // vertexInputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    // vertexInputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+
+    // // 3.（配置光栅化阶段）填写 VkPipelineRasterizationStateCreateInfo
+    // VkPipelineRasterizationStateCreateInfo rasterizationStateInfo = {};
+    // rasterizationStateInfo.sType = 
+    //     VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    // rasterizationStateInfo.rasterizerDiscardEnable = VK_FALSE;
+    // rasterizationStateInfo.depthClampEnable        = VK_FALSE;
+    // rasterizationStateInfo.depthBiasEnable         = VK_FALSE;
+    // rasterizationStateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    // rasterizationStateInfo.lineWidth   = 1.0f;
+    // rasterizationStateInfo.frontFace   = VK_FRONT_FACE_CLOCKWISE; // 定义顺时针顶点顺序为正面
+    // rasterizationStateInfo.cullMode    = VK_CULL_MODE_BACK_BIT;   // 所以逆时针顶点顺序为背面
+
+
+    // // 4.（配置多重采样阶段）填写 VkPipelineMultisampleStateCreateInfo
+    // // 暂时禁用
+    // VkPipelineMultisampleStateCreateInfo multisamplingStateInfo = {};
+    // multisamplingStateInfo.sType =
+    //     VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    // multisamplingStateInfo.sampleShadingEnable  = VK_FALSE;
+    // multisamplingStateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+
+    // // 5.（配置深度和模板测试阶段）填写 VkPipelineDepthStencilStateCreateInfo
+    // // 暂不需要
+
+    // // 6.（配置颜色混合阶段）
+    // // 6.1 填写 VkPipelineColorBlendAttachmentState，其包含针对帧缓冲区每个附件的配置
+    // // 暂不启用，仅一个
+    // VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
+    // colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_A_BIT
+    //                                       | VK_COLOR_COMPONENT_R_BIT
+    //                                       | VK_COLOR_COMPONENT_G_BIT
+    //                                       | VK_COLOR_COMPONENT_B_BIT;
+    // colorBlendAttachmentState.blendEnable    = VK_FALSE;
+
+    // // 6.2 填写 VkPipelineColorBlendStateCreateInfo, 其包含颜色混合的全局设置
+    // VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
+    // colorBlendStateInfo.sType =
+    //     VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    // colorBlendStateInfo.logicOpEnable   = VK_FALSE;
+    // colorBlendStateInfo.attachmentCount = 1;
+    // colorBlendStateInfo.pAttachments    = &colorBlendAttachmentState;
+
+
+
+    
+}
+

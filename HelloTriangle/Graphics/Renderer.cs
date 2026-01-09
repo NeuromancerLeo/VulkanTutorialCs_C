@@ -1,9 +1,9 @@
 //该类会实现 IRenderer 接口，重要的是，该类不会暴露任何图形 API 的细节
 
 using System.Runtime.InteropServices;
-using HelloTriangle.Nativelib;
+using HelloTriangle.Windowing;
 
-namespace HelloTriangle;
+namespace HelloTriangle.Graphics;
 
 public static partial class Renderer
 {
@@ -11,7 +11,7 @@ public static partial class Renderer
 
     [LibraryImport(library)]
     [return: MarshalAs(UnmanagedType.I1)]
-    private static partial bool rendererInitialize(Window window);
+    private static partial bool rendererInitialize(GLFWwindowSafeHandle window);
 
     [LibraryImport(library)]
     private static partial void rendererReady();
@@ -26,7 +26,7 @@ public static partial class Renderer
     private static partial void rendererRelease();
 
 
-    public static bool Initialize(Window window)
+    public static bool Initialize(GLFWwindowSafeHandle window)
     {
         return rendererInitialize(window);
     }

@@ -122,3 +122,42 @@ void destroySwapchainImageViews(
     uint32_t        swapchainImageCount,
     VkImageView**   ppSwapchainImageViews
 );
+
+
+VkShaderModule createShaderModule(
+    VkDevice        device,
+    uint32_t        wordSize,
+    const uint32_t* spvWords
+);
+
+
+void destroyShaderModule(VkDevice device, VkShaderModule shaderModule);
+
+
+VkPipelineLayout createPipelineLayout(
+    VkDevice                    device,
+    VkPipelineLayoutCreateInfo* pCreateInfo
+);
+
+
+void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
+
+
+void createGraphicsPipeline(
+    VkDevice                                device,
+
+    VkPipelineDynamicStateCreateInfo*       pDynamicStateInfo,
+    VkPipelineViewportStateCreateInfo*      pViewportStateInfo,
+
+    VkPipelineLayout                        pipelineLayout,
+    VkPipelineShaderStageCreateInfo**       ppShaderStatgeInfos,
+
+    VkPipelineVertexInputStateCreateInfo*   pVertexInputStateInfo,
+    VkPipelineInputAssemblyStateCreateInfo* pVertexInputAssemblyInfo,
+
+    VkPipelineRasterizationStateCreateInfo* pRasterizationStateInfo,
+    VkPipelineMultisampleStateCreateInfo*   pMultisamplingStateInfo,
+
+    VkPipelineDepthStencilStateCreateInfo*  pDepthStencilStateInfo,
+    VkPipelineColorBlendStateCreateInfo*    pColorBlendStateInfo
+);

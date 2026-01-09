@@ -1,23 +1,23 @@
 using System.Runtime.InteropServices;
 
-namespace HelloTriangle.Nativelib;
+namespace HelloTriangle.Windowing;
 
 /// <summary>
 /// 动态链接库的托管包装类，见 <see cref="library"/>.
 /// </summary>
-public static partial class Windowing
+public static partial class Window
 {
     const string library = "nativelib_windowing";
     
 
     [LibraryImport(library, StringMarshalling = StringMarshalling.Utf8)]
-    private static partial Window initializeWindow(int width, int height, string title);
+    private static partial GLFWwindowSafeHandle initializeWindow(int width, int height, string title);
 
     [LibraryImport(library)]
-    private static partial void destroyWindow(Window window);
+    private static partial void destroyWindow(GLFWwindowSafeHandle window);
 
     [LibraryImport(library)]
-    private static partial int windowShouldClose(Window window);
+    private static partial int windowShouldClose(GLFWwindowSafeHandle window);
 
     [LibraryImport(library)]
     private static partial void pollEvents();
@@ -26,7 +26,7 @@ public static partial class Windowing
     private static partial void terminate();
 
 
-    public static Window Handle {get; private set;} = null!;
+    public static GLFWwindowSafeHandle Handle {get; private set;} = null!;
 
 
     /// <summary>
@@ -35,8 +35,8 @@ public static partial class Windowing
     /// <param name="width"></param>
     /// <param name="height"></param>
     /// <param name="title"></param>
-    /// <returns>一个创建好的 <see cref="Window"/> 对象，使用 <see cref="Window.IsInvalid"/> 来检查其是否有效</returns>
-    public static void InitializeWindow(int width, int height, string title)
+    /// <returns>一个创建好的 <see cref="GLFWwindowSafeHandle"/> 对象，使用 <see cref="GLFWwindowSafeHandle.IsInvalid"/> 来检查其是否有效</returns>
+    public static void Initialize(int width, int height, string title)
     {
         Handle = initializeWindow(width, height, title);
     }
@@ -44,18 +44,17 @@ public static partial class Windowing
     /// <summary>
     /// 销毁窗口.
     /// </summary>
-    /// <param name="window">要销毁的窗口</param>
-    public static void DestroyWindow()
+    public static void Destroy()
     {
         destroyWindow(Handle);
     }
 
     /// <summary>
-    /// 检查给定窗口是否 Close 标志位为 1.
+    /// 检查窗口是否 Close 标志位为 1.
     /// </summary>
     /// <param name="window">给定窗口</param>
     /// <returns><c>true</c> 如果窗口的 Close 标志位为 1.</returns>
-    public static bool WindowShouldClose()
+    public static bool ShouldClose()
     {
         if (windowShouldClose(Handle) == 1)
             return true;

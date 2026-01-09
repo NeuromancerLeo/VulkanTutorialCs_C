@@ -10,7 +10,7 @@ EX_API bool rendererInitialize(GLFWwindow* window)
     // 为渲染上下文分配内存
     g_context = new_render_context();
     // 构建渲染上下文
-    if (!create_render_context(window, g_context))
+    if (!create_render_context(g_context, window))
     {
         destroy_render_context(g_context);
         return false;
@@ -23,6 +23,8 @@ EX_API bool rendererInitialize(GLFWwindow* window)
 EX_API void rendererReady()
 {
     // 配置渲染设置，仅在初始化成功后被调用一次
+    // 创建一个图形管线
+    // create_graphics_pipeline_for_HelloTriangle(g_context->device, ?, ?, ?, ?, ?, ?);
 }
 
 
