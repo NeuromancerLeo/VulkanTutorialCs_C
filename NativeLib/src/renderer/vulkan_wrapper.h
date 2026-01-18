@@ -124,40 +124,76 @@ void destroySwapchainImageViews(
 );
 
 
-VkShaderModule createShaderModule(
-    VkDevice        device,
-    uint32_t        wordSize,
-    const uint32_t* spvWords
+/// @brief 创建渲染通道，其用于为管线提供帧缓冲区中关于附件的信息.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的渲染通道创建信息
+///
+/// @return 返回新创建的 VkRenderPass 句柄（当发生错误时返回 `NULL`）
+VkRenderPass createRenderPass(
+    VkDevice                        device,
+    const VkRenderPassCreateInfo*   pCreateInfo
 );
 
 
+/// @brief 销毁给定的 VkRenderPass.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param renderPass 要销毁的渲染通道句柄
+void destroyRenderPass(VkDevice device, VkRenderPass renderPass);
+
+
+/// @brief 创建着色器模块，其用于为管线提供着色器阶段的着色器代码源.
+///
+/// @param device 调用该函数需要传入对应的 VkDevice 句柄
+/// @param spvFilePath 对应 SPIR-V 文件的目录
+///
+/// @return 返回新创建的 VkShaderModule 句柄（当发生错误时返回 `NULL`）
+VkShaderModule createShaderModule(
+    VkDevice        device,
+    const char*     spvFilePath
+);
+
+
+/// @brief 销毁给定的 VkShaderModule.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param shaderModule 要销毁的着色器模块句柄
 void destroyShaderModule(VkDevice device, VkShaderModule shaderModule);
 
 
+/// @brief 创建管线布局，其用于为管线提供描述符集的信息.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的管线布局创建信息
+///
+/// @return 返回新创建的 VkPipelineLayout 句柄（当发生错误时返回 `NULL`）
 VkPipelineLayout createPipelineLayout(
-    VkDevice                    device,
-    VkPipelineLayoutCreateInfo* pCreateInfo
+    VkDevice                            device,
+    const VkPipelineLayoutCreateInfo*   pCreateInfo
 );
 
 
+/// @brief 销毁给定的 VkPipelineLayout.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pipelineLayout 要销毁的管线布局句柄
 void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
 
 
-void createGraphicsPipeline(
-    VkDevice                                device,
-
-    VkPipelineDynamicStateCreateInfo*       pDynamicStateInfo,
-    VkPipelineViewportStateCreateInfo*      pViewportStateInfo,
-
-    VkPipelineLayout                        pipelineLayout,
-    VkPipelineShaderStageCreateInfo**       ppShaderStatgeInfos,
-
-    VkPipelineVertexInputStateCreateInfo*   pVertexInputStateInfo,
-    VkPipelineInputAssemblyStateCreateInfo* pVertexInputAssemblyInfo,
-
-    VkPipelineRasterizationStateCreateInfo* pRasterizationStateInfo,
-    VkPipelineMultisampleStateCreateInfo*   pMultisamplingStateInfo,
-
-    VkPipelineDepthStencilStateCreateInfo*  pDepthStencilStateInfo,
-    VkPipelineColorBlendStateCreateInfo*    pColorBlendStateInfo
+/// @brief 创建图形管线.
+///
+/// @param device 
+/// @param pCreateInfo 
+///
+/// @return 
+VkPipeline createGraphicsPipeline(
+    VkDevice                             device,
+    const VkGraphicsPipelineCreateInfo*  pCreateInfo
 );
+
+
+/// @brief 销毁给定的 VkPipeline.
+/// @param device 
+/// @param pipeline 
+void destroyPipeline(VkDevice device, VkPipeline pipeline);

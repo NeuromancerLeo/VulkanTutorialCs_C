@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../common/nativelib.h"
-#include "render_context.h"
+#include "renderer_context.h"
 
 #include <stdbool.h>
 #include <GLFW/glfw3.h>

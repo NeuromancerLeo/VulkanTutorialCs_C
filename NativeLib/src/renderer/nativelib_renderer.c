@@ -2,17 +2,17 @@
 
 #include "nativelib_renderer.h"
 
-static RenderContext* g_context = NULL;
+static RendererContext* g_context = NULL;
 
 
 EX_API bool rendererInitialize(GLFWwindow* window)
 {
-    // 为渲染上下文分配内存
-    g_context = new_render_context();
-    // 构建渲染上下文
-    if (!create_render_context(g_context, window))
+    // 为渲染器上下文分配内存
+    g_context = new_renderer_context();
+    // 构建渲染器上下文
+    if (!create_renderer_context(g_context, window))
     {
-        destroy_render_context(g_context);
+        destroy_renderer_context(g_context);
         return false;
     }
 
@@ -22,9 +22,7 @@ EX_API bool rendererInitialize(GLFWwindow* window)
 
 EX_API void rendererReady()
 {
-    // 配置渲染设置，仅在初始化成功后被调用一次
-    // 创建一个图形管线
-    // create_graphics_pipeline_for_HelloTriangle(g_context->device, ?, ?, ?, ?, ?, ?);
+    
 }
 
 
@@ -42,6 +40,6 @@ EX_API void rendererEndFrame()
 
 EX_API void rendererRelease()
 {
-    destroy_render_context(g_context);
+    destroy_renderer_context(g_context);
 }
 

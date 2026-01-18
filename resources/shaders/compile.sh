@@ -1,2 +1,2 @@
-glslc shader.vert -o shader.vert.spv
-glslc shader.frag -o shader.frag.spv
+glslc triangle.vert -o bin/triangle_vert.spv
+glslc triangle.frag -o bin/triangle_frag.spv

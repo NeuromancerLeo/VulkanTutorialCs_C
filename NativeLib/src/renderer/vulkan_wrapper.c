@@ -29,6 +29,7 @@ static void get_driver_version_string(
     uint32_t*   minor,
     uint32_t*   patch
 );
+static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath);
 
 
 VkInstance createInstance(void)
@@ -577,8 +578,8 @@ VkDevice createLogicalDevice(
             presentationQueue);
     }
 
-    log_info("获取了一个 VkQueue (for graphics)");
-    log_info("获取了一个 VkQueue (for presentation)");
+    log_info("获取了一个 VkQueue (for graphics).");
+    log_info("获取了一个 VkQueue (for presentation).");
 
 #ifdef DEBUG
     if (useSingleQueue)
@@ -824,7 +825,7 @@ VkImageView* createSwapchainImageViews(
                               &pSwapchainImageViews[i]);
         if (result != VK_SUCCESS)
         {
-            log_error("Failed to create VkImageViews(%u) for swapchain!"
+            log_error("Failed to create VkImageViews(s, %u) for swapchain!"
                 " Error Code(VkResult): %d",
                 i, result);
 
@@ -836,6 +837,8 @@ VkImageView* createSwapchainImageViews(
 
             return VK_NULL_HANDLE;
         }
+
+        log_info("创建了一个 VkImageView(s, %u) for swapchain.", i);
     }
 
     return pSwapchainImageViews;
@@ -862,7 +865,7 @@ void destroySwapchainImageViews(
     {
         vkDestroyImageView(device, (*ppSwapchainImageViews)[i], NULL);
 
-        log_trace("调用了 vkDestroyImageView(s，%u)！", i);
+        log_trace("调用了 vkDestroyImageView(s，%u) for swapchian！", i);
     }
 
     // 释放数组占用的内存
@@ -873,16 +876,47 @@ void destroySwapchainImageViews(
 }
 
 
-VkShaderModule createShaderModule(
-    VkDevice        device,
-    uint32_t        wordSize,
-    const uint32_t* spvWords
+VkRenderPass createRenderPass(
+    VkDevice                        device,
+    const VkRenderPassCreateInfo*   pCreateInfo
 )
 {
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkResult result = vkCreateRenderPass(device, pCreateInfo, NULL, &renderPass);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkRenderPass! Error Code(VkResult): %d",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("创建了一个 VkRenderPass.");
+
+    return renderPass;
+}
+
+
+void destroyRenderPass(VkDevice device, VkRenderPass renderPass)
+{
+    vkDestroyRenderPass(device, renderPass, NULL);
+
+    log_trace("调用了 vkDestroyRenderPass！");
+}
+
+
+VkShaderModule createShaderModule(
+    VkDevice        device,
+    const char*     spvFilePath
+)
+{
+    size_t codeSize = 0;
+    uint32_t* words = read_spv_file(&codeSize, spvFilePath);
+
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = wordSize;
-    createInfo.pCode    = spvWords;
+    createInfo.codeSize = codeSize;
+    createInfo.pCode    = words;
 
     VkShaderModule shaderModule = VK_NULL_HANDLE;
     VkResult result = vkCreateShaderModule(device, &createInfo, NULL, &shaderModule);
@@ -891,22 +925,112 @@ VkShaderModule createShaderModule(
         log_error("Failed to create a VkShaderModule! Error Code(VkResult): %d",
             result);
 
+        free(words);
+
         return VK_NULL_HANDLE;
     }
 
+    free(words);    // 成功创建完 VkShaderModule 后就可以释放数组内存了
+
+    log_info("创建了一个 VkShaderModule.");
+
     return shaderModule;
+}
+
+/// @brief 读取 spv 文件，返回的 spv 码数组记得释放.
+///
+/// @param codeSize 输出参数，返回 spv 文件的总大小（字节） 
+/// @param spvFilePath spv 文件目录
+///
+/// @return spv 4 字节码数组，当发生错误时返回 `NULL`
+static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath)
+{
+    if (!codeSize || !spvFilePath)
+    {
+        log_error("%s(): 传入了无效参数！", __func__);
+    }
+
+    FILE* file = fopen(spvFilePath, "rb");     // 以二进制形式读打开
+    if (!file)
+    {
+        log_error("%s(): Failed to open SPIR-V (.spv) file: %s", __func__, spvFilePath);
+        
+        return NULL;
+    }
+
+    // 获取文件大小（单位字节）
+    fseek(file, 0, SEEK_END);
+    size_t fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // 检查文件是否 4 字节对齐（SPIR-V 码规定）
+    if (fileSize <= 0 || fileSize % 4 != 0)
+    {
+        log_error("%s(): " 
+            "The given SPIR-V file size is invalid (must be a multiple of 4): %s",
+            __func__, spvFilePath);
+
+        fclose(file);
+
+        return NULL;
+    }
+
+    size_t wordCount = fileSize / 4;
+
+    // 分配数组
+    uint32_t* words = (uint32_t*)calloc(wordCount, sizeof(uint32_t)); 
+    if (!words)
+    {
+        log_error("%s(): 数组内存分配失败！", __func__);
+        
+        fclose(file);
+
+        return NULL;
+    }
+
+    // 读文件，以 4 字节为单位
+    size_t readCount = fread(words, sizeof(uint32_t), wordCount, file);
+    
+    fclose(file);
+
+    // 错误检查
+    if (readCount != wordCount)
+    {
+        log_error("%s(): SPIR-V 文件读取不完整！", __func__);
+
+        free(words);
+
+        return NULL;
+    }
+
+    // 错误检查
+    if (words[0] != 0x07230203u)
+    {
+        log_error("%s(): 读取的 SPIR-V 文件无效，第一位码不等于 0x07230203：0x%08x",
+            __func__, words[0]);
+
+        free(words);
+
+        return NULL;
+    }
+
+    *codeSize = fileSize;
+
+    return words;
 }
 
 
 void destroyShaderModule(VkDevice device, VkShaderModule shaderModule)
 {
     vkDestroyShaderModule(device, shaderModule, NULL);
+
+    log_trace("调用了 vkDestroyShaderModule！");
 }
 
 
 VkPipelineLayout createPipelineLayout(
-    VkDevice                    device,
-    VkPipelineLayoutCreateInfo* pCreateInfo
+    VkDevice                            device,
+    const VkPipelineLayoutCreateInfo*   pCreateInfo
 )
 {
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
@@ -922,6 +1046,8 @@ VkPipelineLayout createPipelineLayout(
         return VK_NULL_HANDLE;
     }
 
+    log_info("创建了一个 VkPipelineLayout.");
+
     return pipelineLayout;
 }
 
@@ -929,140 +1055,41 @@ VkPipelineLayout createPipelineLayout(
 void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
 {
     vkDestroyPipelineLayout(device, pipelineLayout, NULL);
+
+    log_trace("调用了 vkDestroyPipelineLayout！");
 }
 
 
-void createGraphicsPipeline(
-    VkDevice                                device,
-
-    VkPipelineDynamicStateCreateInfo*       pDynamicStateInfo,
-    VkPipelineViewportStateCreateInfo*      pViewportStateInfo,
-
-    VkPipelineLayout                        pipelineLayout,
-    VkPipelineShaderStageCreateInfo**       ppShaderStatgeInfos,
-
-    VkPipelineVertexInputStateCreateInfo*   pVertexInputStateInfo,
-    VkPipelineInputAssemblyStateCreateInfo* pVertexInputAssemblyInfo,
-
-    VkPipelineRasterizationStateCreateInfo* pRasterizationStateInfo,
-    VkPipelineMultisampleStateCreateInfo*   pMultisamplingStateInfo,
-
-    VkPipelineDepthStencilStateCreateInfo*  pDepthStencilStateInfo,
-    VkPipelineColorBlendStateCreateInfo*    pColorBlendStateInfo
+VkPipeline createGraphicsPipeline(
+    VkDevice                             device,
+    const VkGraphicsPipelineCreateInfo*  pCreateInfo
 )
 {
-    // 0.指定使用的动态状态（即不需要静态烘培到管线的状态）
-    // VkDynamicState dynamicStates[] = {
-    //     VK_DYNAMIC_STATE_VIEWPORT,      // 视口大小
-    //     VK_DYNAMIC_STATE_SCISSOR        // 剪裁矩形
-    // };
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult result = vkCreateGraphicsPipelines(device,
+                          VK_NULL_HANDLE,
+                          1,
+                          pCreateInfo,
+                          NULL,
+                          &pipeline);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkPipeline(Graphics)! Error Code(VkResult): %d",
+            result);
 
-    // VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};
-    // dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    // dynamicStateInfo.dynamicStateCount = 2;
-    // dynamicStateInfo.pDynamicStates    = dynamicStates;
+        return VK_NULL_HANDLE;
+    }
 
-    // // 对于视口和剪裁矩形，由于我们指定它们为动态的状态，故在这只需要指定它们的数量
-    // // 而不指定具体结构体指针，实际的视口和剪裁矩形将会要在绘制时设置
-    // VkPipelineViewportStateCreateInfo viewportStateInfo = {};
-    // viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    // viewportStateInfo.viewportCount = 1;
-    // viewportStateInfo.scissorCount  = 1;
+    log_info("创建了一个 VkPipeline.");
 
-
-    // // 1.（配置着色器阶段）创建 VkShaderModule
-    // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成后
-    // 我们可以立即调用 vkDestroyShaderModule 进行销毁
-    // VkShaderModule vertexShaderModule =         // 顶点着色器
-    //     create_shader_module(device, vertexSpvWordSize, vertexSpvWords);
-
-    // VkShaderModule fragmentShaderModule =       // 片元着色器
-    //     create_shader_module(device, fragmentSpvWordSize, fragmentSpvWords);
-
-    // // 1.5.（配置着色器阶段）填写 VkPipelineShaderStageCreateInfo
-    // VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};     // 顶点着色器
-    // vertexShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    // vertexShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
-    // vertexShaderStageInfo.module = vertexShaderModule;
-    // vertexShaderStageInfo.pName  = "main";      // 指定 SPV 的函数入口点
-    //                                             //（SPV 是可以由多个着色器文件编译得来的）
-
-    // VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};   // 片元着色器
-    // fragmentShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    // fragmentShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
-    // fragmentShaderStageInfo.module = fragmentShaderModule;
-    // fragmentShaderStageInfo.pName  = "main";
-
-    // 创建 craeteInfo 数组备用
-    // VkPipelineShaderStageCreateInfo shaderStageInfos[] = {
-    //     vertexShaderStageInfo,
-    //     fragmentShaderStageInfo
-    // };
+    return pipeline;
+}
 
 
-    // // 2.（配置顶点输入阶段）填写 VkPipelineVertexInputStateCreateInfo
-    // // 教程目前为止在着色器里直接硬编码顶点数据, 所以该结构体暂时表示为不需要加载顶点数据
-    // VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
-    // vertexInputStateInfo.sType = 
-    //     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    // vertexInputStateInfo.vertexBindingDescriptionCount   = 0; 
-    // vertexInputStateInfo.pVertexBindingDescriptions      = NULL;
-    // vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
-    // vertexInputStateInfo.pVertexAttributeDescriptions    = NULL;
+void destroyPipeline(VkDevice device, VkPipeline pipeline)
+{
+    vkDestroyPipeline(device, pipeline, NULL);
 
-    // // 2.5（配置顶点输入阶段）填写 VkPipelineInputAssemblyStateCreateInfo
-    // VkPipelineInputAssemblyStateCreateInfo vertexInputAssemblyInfo = {};
-    // vertexInputAssemblyInfo.sType = 
-    //     VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    // vertexInputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    // vertexInputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-
-
-    // // 3.（配置光栅化阶段）填写 VkPipelineRasterizationStateCreateInfo
-    // VkPipelineRasterizationStateCreateInfo rasterizationStateInfo = {};
-    // rasterizationStateInfo.sType = 
-    //     VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    // rasterizationStateInfo.rasterizerDiscardEnable = VK_FALSE;
-    // rasterizationStateInfo.depthClampEnable        = VK_FALSE;
-    // rasterizationStateInfo.depthBiasEnable         = VK_FALSE;
-    // rasterizationStateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    // rasterizationStateInfo.lineWidth   = 1.0f;
-    // rasterizationStateInfo.frontFace   = VK_FRONT_FACE_CLOCKWISE; // 定义顺时针顶点顺序为正面
-    // rasterizationStateInfo.cullMode    = VK_CULL_MODE_BACK_BIT;   // 所以逆时针顶点顺序为背面
-
-
-    // // 4.（配置多重采样阶段）填写 VkPipelineMultisampleStateCreateInfo
-    // // 暂时禁用
-    // VkPipelineMultisampleStateCreateInfo multisamplingStateInfo = {};
-    // multisamplingStateInfo.sType =
-    //     VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    // multisamplingStateInfo.sampleShadingEnable  = VK_FALSE;
-    // multisamplingStateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-
-    // // 5.（配置深度和模板测试阶段）填写 VkPipelineDepthStencilStateCreateInfo
-    // // 暂不需要
-
-    // // 6.（配置颜色混合阶段）
-    // // 6.1 填写 VkPipelineColorBlendAttachmentState，其包含针对帧缓冲区每个附件的配置
-    // // 暂不启用，仅一个
-    // VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
-    // colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_A_BIT
-    //                                       | VK_COLOR_COMPONENT_R_BIT
-    //                                       | VK_COLOR_COMPONENT_G_BIT
-    //                                       | VK_COLOR_COMPONENT_B_BIT;
-    // colorBlendAttachmentState.blendEnable    = VK_FALSE;
-
-    // // 6.2 填写 VkPipelineColorBlendStateCreateInfo, 其包含颜色混合的全局设置
-    // VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
-    // colorBlendStateInfo.sType =
-    //     VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    // colorBlendStateInfo.logicOpEnable   = VK_FALSE;
-    // colorBlendStateInfo.attachmentCount = 1;
-    // colorBlendStateInfo.pAttachments    = &colorBlendAttachmentState;
-
-
-
-    
+    log_trace("调用了 vkDestroyPipeline!");
 }
 
