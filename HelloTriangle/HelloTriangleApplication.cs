@@ -1,6 +1,5 @@
 using HelloTriangle.Windowing;
 using HelloTriangle.Graphics;
-using HelloTriangle.Graphics.Resources;
 
 namespace HelloTriangle;
 
