@@ -10,8 +10,6 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-
-
 /// @brief 渲染器上下文结构体，使用 new_renderer_context 获取一个该结构体句柄.
 typedef struct RendererContext {
     GLFWwindow*         window;

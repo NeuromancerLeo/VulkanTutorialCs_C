@@ -183,10 +183,10 @@ void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
 
 /// @brief 创建图形管线.
 ///
-/// @param device 
-/// @param pCreateInfo 
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的管线创建信息
 ///
-/// @return 
+/// @return 返回新创建的 VkPipeline 句柄（当发生错误时返回 `NULL`）
 VkPipeline createGraphicsPipeline(
     VkDevice                             device,
     const VkGraphicsPipelineCreateInfo*  pCreateInfo
@@ -194,6 +194,7 @@ VkPipeline createGraphicsPipeline(
 
 
 /// @brief 销毁给定的 VkPipeline.
-/// @param device 
-/// @param pipeline 
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pipeline 要销毁的管线句柄
 void destroyPipeline(VkDevice device, VkPipeline pipeline);
