@@ -96,6 +96,7 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 对于渲染一帧三角形，我们只有一个附件，即（作颜色附件的）交换链中的图像
     // 所以这里只需要填一个该结构体来描述这个附件即可
     VkAttachmentDescription colorAttachment01Description = {};
+    // 该附件格式对应为交换链图像的格式
     colorAttachment01Description.format  = pContext->swapchainImageFormat;
     colorAttachment01Description.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttachment01Description.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
