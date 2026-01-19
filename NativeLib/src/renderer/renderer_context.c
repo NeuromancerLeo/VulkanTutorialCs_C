@@ -405,7 +405,6 @@ void destroy_renderer_context(RendererContext* pContext)
         free(pContext->triangle_swapchainFramebuffers);       // 释放帧缓冲区数组
         pContext->triangle_swapchainFramebuffers = NULL;      // 占用的堆内存
     }
-    
 
     if (pContext->triangle_renderPass)                        // 销毁三角形绘制用渲染通道
         destroyRenderPass(pContext->device, pContext->triangle_renderPass);
