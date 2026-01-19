@@ -1,6 +1,7 @@
 #include "renderer_context.h"
 
 static bool triangle_create_render_pass(RendererContext* pContext);
+static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext);
 static bool triangle_create_graphics_pipeline(
     RendererContext*    pContext,
 
@@ -65,15 +66,18 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window)
     pContext->swapchainImageViews = createSwapchainImageViews(pContext->device,
                                         pContext->swapchainImageFormat,       
                                         pContext->swapchainImageCount,    // 创建交换链的
-                                        pContext->swapchainImages);       // 图形视图
+                                        pContext->swapchainImages);       // 图像视图
     if (!pContext->swapchainImageViews)
         return false;
 
 
-    if (!triangle_create_render_pass(pContext))         // 为三角形渲染创建渲染通道
+    if (!triangle_create_render_pass(pContext))             // 为三角形绘制创建渲染通道
         return false;
 
-    if (!triangle_create_graphics_pipeline(pContext,    // 为三角形渲染创建渲染管线
+    if(!trigangle_create_swapchain_framebuffers(pContext))  // 为三角形绘制创建帧缓冲区
+        return false;
+
+    if (!triangle_create_graphics_pipeline(pContext,        // 为三角形绘制创建渲染管线
              "./triangle_vert.spv",
              "main",
              "./triangle_frag.spv",
@@ -145,6 +149,44 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     pContext->triangle_renderPass = createRenderPass(pContext->device, &createInfo);
     if (pContext->triangle_renderPass == VK_NULL_HANDLE)
         return false;
+
+    return true;
+}
+
+static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext)
+{
+    // 为帧缓冲区数组分配堆内存
+    pContext->triangle_swapchainFramebuffers = // 这里需要一个交换链图像对应一个帧缓冲区
+        (VkFramebuffer*)calloc(pContext->swapchainImageCount, sizeof(VkFramebuffer));
+
+    // 开始帧缓冲区创建
+    for (int i = 0; i < pContext->swapchainImageCount; i++)
+    {
+        // 指定帧缓冲区的所有附件（通过 VkImageView 指定）
+        // 这里只需要交换链图像这一个作颜色附件，故附件数组仅包含一个
+        VkImageView attachments[] = {
+            pContext->swapchainImageViews[i]
+        };
+
+        VkFramebufferCreateInfo createInfo = {};
+        createInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        // 指定对应 RenderPass
+        createInfo.renderPass      = pContext->triangle_renderPass;
+        // 附件数组信息
+        createInfo.attachmentCount = 1;
+        createInfo.pAttachments    = attachments;
+        // 附件的尺寸（帧缓冲区规定其所有附件都需要为相同尺寸）
+        createInfo.width           = pContext->swapchainExtent.width;
+        createInfo.height          = pContext->swapchainExtent.height;
+        // 需要使用的附件层数（我们的附件（交换链图像）只有一层，所以这里填 1）
+        createInfo.layers          = 1;
+        
+        pContext->triangle_swapchainFramebuffers[i] =
+            createFramebuffer(pContext->device, &createInfo);
+        // 创建失败直接返回 false 退出函数
+        if (pContext->triangle_swapchainFramebuffers[i] == VK_NULL_HANDLE)
+            return false;
+    }
 
     return true;
 }
@@ -351,23 +393,33 @@ void destroy_renderer_context(RendererContext* pContext)
     if (pContext->triangle_fragmentShaderModule)
         destroyShaderModule(pContext->device, pContext->triangle_fragmentShaderModule);
 
-    if (pContext->triangle_renderPass)                        // 销毁三角形管线渲染通道
+    if (pContext->triangle_swapchainFramebuffers)             // 销毁三角形绘制用帧缓冲区
+    {
+        for (int i = 0; i < pContext->swapchainImageCount; i++)   
+        {
+            if (pContext->triangle_swapchainFramebuffers[i])
+                destroyFramebuffer(pContext->device,
+                    pContext->triangle_swapchainFramebuffers[i]);
+        }
+
+        free(pContext->triangle_swapchainFramebuffers);       // 释放帧缓冲区数组
+        pContext->triangle_swapchainFramebuffers = NULL;      // 占用的堆内存
+    }
+    
+
+    if (pContext->triangle_renderPass)                        // 销毁三角形绘制用渲染通道
         destroyRenderPass(pContext->device, pContext->triangle_renderPass);
 
 
     if (pContext->swapchainImageViews)                             // 销毁交换链图像视图
-        destroySwapchainImageViews(pContext->device,               // 并释放其数组占用的
-            pContext->swapchainImageCount,                         // 内存
+        destroySwapchainImageViews(pContext->device,
+            pContext->swapchainImageCount,
             &pContext->swapchainImageViews);
 
-    if (pContext->swapchain != VK_NULL_HANDLE)                     // 销毁交换链
-        destroySwapchain(pContext->device, pContext->swapchain);
-    
-    if (pContext->swapchainImages)                                 // 释放交换链图像数组
-    {                                                              // 占用的内存
-        free(pContext->swapchainImages);
-        pContext->swapchainImages = NULL;
-    }
+    if (pContext->swapchain != VK_NULL_HANDLE)                     // 销毁交换链及其图像
+        destroySwapchain(pContext->device,
+            pContext->swapchain,
+            &pContext->swapchainImages);
 
     if (pContext->device != VK_NULL_HANDLE)                        // 销毁 Vk 设备
         destroyLogicalDevice(pContext->device);

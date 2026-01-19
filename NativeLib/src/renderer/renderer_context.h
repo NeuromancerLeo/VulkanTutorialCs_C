@@ -32,6 +32,8 @@ typedef struct RendererContext {
 // 绘制 triangle 的管线相关对象（先硬编码，等我搞清楚了这一堆对象的依赖关系我再想扩展性设计的事）
     VkRenderPass        triangle_renderPass;    
 
+    VkFramebuffer*      triangle_swapchainFramebuffers; // 堆分配的数组，需自行释放
+
     VkShaderModule      triangle_vertexShaderModule;
     VkShaderModule      triangle_fragmentShaderModule;
     VkPipelineLayout    triangle_pipelineLayout;
@@ -55,5 +57,6 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window);
 
 
 /// @brief 给定渲染器上下文句柄，销毁其（除了窗口句柄外的）所有上下文对象，同时销毁自身释放内存
+///
 /// @param pContext 要销毁的渲染器上下文句柄
 void destroy_renderer_context(RendererContext* pContext);

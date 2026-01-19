@@ -765,9 +765,20 @@ VkSwapchainKHR createSwapchain(
 }
 
 
-void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain)
+void destroySwapchain(
+    VkDevice        device, 
+    VkSwapchainKHR  swapchain, 
+    VkImage**       ppSwapchainImages
+)
 {
     vkDestroySwapchainKHR(device, swapchain, NULL);
+
+    // 释放在 createSwapchain() 中分配的交换链图像数组堆内存
+    if(ppSwapchainImages)
+    {
+        free(*ppSwapchainImages);
+        *ppSwapchainImages = NULL;
+    }
 
     log_trace("调用了 vkDestroySwapchainKHR！");
 }
@@ -902,6 +913,31 @@ void destroyRenderPass(VkDevice device, VkRenderPass renderPass)
     vkDestroyRenderPass(device, renderPass, NULL);
 
     log_trace("调用了 vkDestroyRenderPass！");
+}
+
+
+VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo)
+{
+    VkFramebuffer framebuffer = VK_NULL_HANDLE;
+    VkResult result = vkCreateFramebuffer(device, pCreateInfo, NULL, &framebuffer);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Faild to create a VkFramebuffer! Error Code(VkResult): %d", result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("创建了一个 VkFramebuffer.");
+
+    return framebuffer;
+}
+
+
+void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
+{
+    vkDestroyFramebuffer(device, framebuffer, NULL);
+
+    log_trace("调用了 vkDestroyFramebuffer！");
 }
 
 

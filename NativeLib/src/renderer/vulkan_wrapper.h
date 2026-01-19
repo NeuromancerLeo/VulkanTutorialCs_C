@@ -92,7 +92,12 @@ VkSwapchainKHR createSwapchain(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param swapchain 要销毁的交换链句柄
-void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain);
+/// @param ppSwapchainImages 需同时传入在 createSwapchain() 中分配的交换链图像数组供销毁
+void destroySwapchain(
+    VkDevice        device, 
+    VkSwapchainKHR  swapchain, 
+    VkImage**       ppSwapchainImages
+);
 
 
 /// @brief 成功创建交换链后调用该函数为交换链中的每一个图像创建基本的图像视图（VkImageView）.
@@ -124,7 +129,7 @@ void destroySwapchainImageViews(
 );
 
 
-/// @brief 创建渲染通道，其用于为管线提供帧缓冲区中关于附件的信息.
+/// @brief 创建渲染通道，其用于为管线提供目标帧缓冲区中关于附件的信息.
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pCreateInfo 给定的渲染通道创建信息
@@ -141,6 +146,22 @@ VkRenderPass createRenderPass(
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param renderPass 要销毁的渲染通道句柄
 void destroyRenderPass(VkDevice device, VkRenderPass renderPass);
+
+
+/// @brief 创建帧缓冲区，其用作管线渲染的目标，帧缓冲区包含了具体的附件
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的帧缓冲区创建信息
+///
+/// @return 返回新创建的 VkFramebuffer 句柄（当发生错误时返回 `NULL`）
+VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo);
+
+
+/// @brief 销毁给定的 VkFramebuffer.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param framebuffer 要销毁的帧缓冲区句柄
+void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer);
 
 
 /// @brief 创建着色器模块，其用于为管线提供着色器阶段的着色器代码源.
