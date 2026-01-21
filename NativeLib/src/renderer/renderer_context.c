@@ -1,5 +1,6 @@
 #include "renderer_context.h"
 
+static bool triangle_create_command_pool(RendererContext* pContext);
 static bool triangle_create_render_pass(RendererContext* pContext);
 static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext);
 static bool triangle_create_graphics_pipeline(
@@ -71,6 +72,9 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window)
         return false;
 
 
+    if (!triangle_create_command_pool(pContext))                     // 为绘制命令创建命令池
+        return false;
+
     if (!triangle_create_render_pass(pContext))             // 为三角形绘制创建渲染通道
         return false;
 
@@ -89,10 +93,40 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window)
     return true;
 }
 
-// 以下是应用层函数，这些函数用来为 绘制三角形 创建对应的管线资源.
-// （说方法属于应用层的意思是这些资源是高度绑定“绘制三角形”这个需求的，所以这个函数
-// 不会写到 vulkan_wrapper（负责提供基础函数）中去，renderer_context（负责调用基础函数）是
-// 负责应用类函数的好地方
+// 以下是应用层函数，这些函数用来为 绘制三角形 创建对应的（管线）资源和对象.
+// （说方法属于应用层的意思是这些资源是高度绑定“绘制三角形”这个需求的，所以这个函数不会写
+// 到 vulkan_wrapper（负责提供基础函数）中去，renderer_context（负责调用基础函数）是负
+// 责应用类函数的好地方）（注：应用层方法是会变的，因为高度依赖于实际需求，目前是绘制三角形）
+
+static bool triangle_create_command_pool(RendererContext* pContext)
+{
+    int queueFamilyIndex = -1;
+    bool useSingleQueue = 
+       has_queue_family_supports_both_graphics_and_presentation(pContext->physicalDevice,
+           pContext->surface,
+           &queueFamilyIndex);
+    
+    QueueFamilyIndices queueFamilyIndices = 
+        find_queue_families(pContext->physicalDevice, pContext->surface);
+
+    // 填写 VkCommandPoolCreateInfo
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // RESET_COMMAND_BUFFER_BIT 允许单独重置命令缓冲区
+    createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    // 指定命令池对应的队列族，绘制三角形，故使用含图形队列的队列族
+    if (useSingleQueue)
+        createInfo.queueFamilyIndex = queueFamilyIndex;
+    else
+        createInfo.queueFamilyIndex = queueFamilyIndices.graphicsSupport;
+
+    pContext->triangle_commandPool = createCommandPool(pContext->device, &createInfo);
+    if (pContext->triangle_commandPool == VK_NULL_HANDLE)
+        return false;
+
+    return true;
+}
 
 static bool triangle_create_render_pass(RendererContext* pContext)
 {
@@ -408,6 +442,9 @@ void destroy_renderer_context(RendererContext* pContext)
 
     if (pContext->triangle_renderPass)                        // 销毁三角形绘制用渲染通道
         destroyRenderPass(pContext->device, pContext->triangle_renderPass);
+
+    if (pContext->triangle_commandPool)
+        destroyCommandPool(pContext->device, pContext->triangle_commandPool);
 
 
     if (pContext->swapchainImageViews)                             // 销毁交换链图像视图

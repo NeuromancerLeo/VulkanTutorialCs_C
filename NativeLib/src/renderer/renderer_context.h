@@ -29,7 +29,10 @@ typedef struct RendererContext {
     VkExtent2D          swapchainExtent;
     VkImageView*        swapchainImageViews;
 
-// 绘制 triangle 的管线相关对象（先硬编码，等我搞清楚了这一堆对象的依赖关系我再想扩展性设计的事）
+// 绘制 triangle 所需的（管线）相关对象
+//（先硬编码，等我搞清楚了这一堆对象的依赖关系我再想扩展性设计的事）
+    VkCommandPool       triangle_commandPool;  
+
     VkRenderPass        triangle_renderPass;    
 
     VkFramebuffer*      triangle_swapchainFramebuffers; // 堆分配的数组，需自行释放

@@ -887,6 +887,35 @@ void destroySwapchainImageViews(
 }
 
 
+VkCommandPool createCommandPool(
+    VkDevice                        device,
+    const VkCommandPoolCreateInfo*  pCreateInfo
+)
+{
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    VkResult result = vkCreateCommandPool(device, pCreateInfo, NULL, &commandPool);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkCommandPool! Error Code(VkResult): %d",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("创建了一个 VkCommandPool.");
+
+    return commandPool;
+}
+
+
+void destroyCommandPool(VkDevice device, VkCommandPool commandPool)
+{
+    vkDestroyCommandPool(device, commandPool, NULL);
+
+    log_trace("调用了 vkDestroyCommandPool！");
+}
+
+
 VkRenderPass createRenderPass(
     VkDevice                        device,
     const VkRenderPassCreateInfo*   pCreateInfo

@@ -129,6 +129,25 @@ void destroySwapchainImageViews(
 );
 
 
+/// @brief 创建命令池，其用于分配命令缓冲区.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的命令池创建信息
+///
+/// @return 返回新创建的 VkCommandPool 句柄（当发生错误时返回 `NULL`）
+VkCommandPool createCommandPool(
+    VkDevice                        device,
+    const VkCommandPoolCreateInfo*  pCreateInfo
+);
+
+
+/// @brief 销毁给定的 VkCommandPool.
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param commandPool 要销毁的命令池句柄
+void destroyCommandPool(VkDevice device, VkCommandPool commandPool);
+
+
 /// @brief 创建渲染通道，其用于为管线提供目标帧缓冲区中关于附件的信息.
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
