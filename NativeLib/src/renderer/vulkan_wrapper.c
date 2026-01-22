@@ -122,7 +122,7 @@ static bool check_instance_layer_properties(void)
 
 #ifdef DEBUG
     // 打印全部可用层名
-    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+    log_debug("%s(): Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
         "available VkInstance layers:",
         __func__, layerCount);
     for (int i = 0; i < layerCount; i++)
@@ -181,7 +181,7 @@ static void check_instance_extension_properties(void)
     VkExtensionProperties extensions[extensionCount];
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, extensions);
 
-    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+    log_debug("%s(): Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
         "available VkInstance extensions:",
         __func__, extensionCount);
     for (int i = 0; i < extensionCount; i++)
@@ -332,7 +332,7 @@ static bool check_device_extension_properties(VkPhysicalDevice physicalDevice)
         sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
 
 #ifdef DEBUG
-    log_debug("%s: Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
+    log_debug("%s(): Found" ESC_FCOLOR_GREEN " %u " ESC_RESET
         "available VkDevice extensions:",
         __func__, extensionCount);
     for (int i = 0; i < extensionCount; i++)
@@ -614,7 +614,7 @@ VkSwapchainKHR createSwapchain(
     // 0.检查参数是否有效
     if (window == NULL)
     {
-        log_error("%s : 函数参数错误！传入了无效的 GLFWwindow 句柄！", __func__);
+        log_error("%s(): 函数参数错误！传入了无效的 GLFWwindow 句柄！", __func__);
 
         return VK_NULL_HANDLE;
     }
@@ -625,7 +625,7 @@ VkSwapchainKHR createSwapchain(
         || pSwapchainImageFormat == NULL
         || pSwapchainExtent == NULL)
     {
-        log_error("%s : 函数参数错误！输出参数不能传入 NULL 地址！", __func__);
+        log_error("%s(): 函数参数错误！输出参数不能传入 NULL 地址！", __func__);
 
         return VK_NULL_HANDLE;
     }
@@ -729,7 +729,7 @@ VkSwapchainKHR createSwapchain(
     *ppSwapchainImages = (VkImage*)calloc(actualImageCount, sizeof(VkImage));
     if (*ppSwapchainImages == NULL)
     {
-        log_error("%s : 交换链图像句柄数组内存分配失败！函数退出.", __func__);
+        log_error("%s(): 交换链图像句柄数组内存分配失败！函数退出.", __func__);
 
         *pSwapchainImageCount = 0;
         *ppSwapchainImages = NULL;
@@ -791,11 +791,10 @@ VkImageView* createSwapchainImageViews(
     const VkImage*  pSwapchainImages
 )
 {
-    if (device == VK_NULL_HANDLE
-        || swapchainImageCount == 0
+    if (swapchainImageCount == 0
         || pSwapchainImages == NULL)
     {
-        log_error("%s : 传入了无效参数！无法为交换链图像创建视图.", __func__);
+        log_error("%s(): 传入了无效参数！无法为交换链图像创建视图.", __func__);
 
         return NULL;
     }
@@ -805,7 +804,7 @@ VkImageView* createSwapchainImageViews(
         (VkImageView*)calloc(swapchainImageCount, sizeof(VkImageView));
     if (pSwapchainImageViews == NULL)
     {
-        log_error("%s : 交换链图像视图句柄数组内存分配失败！函数退出.", __func__);
+        log_error("%s(): 交换链图像视图句柄数组内存分配失败！函数退出.", __func__);
 
         return NULL;
     }
@@ -862,11 +861,10 @@ void destroySwapchainImageViews(
     VkImageView**   ppSwapchainImageViews   // 要销毁的图像视图的数组的地址
 )
 {
-    if (device == VK_NULL_HANDLE
-        || swapchainImageCount == 0
+    if (swapchainImageCount == 0
         || ppSwapchainImageViews == NULL)
     {
-        log_error("%s : 传入了无效参数！没有销毁任何交换链图像视图.", __func__);
+        log_error("%s(): 传入了无效参数！没有销毁任何交换链图像视图.", __func__);
 
         return;
     }
@@ -913,6 +911,77 @@ void destroyCommandPool(VkDevice device, VkCommandPool commandPool)
     vkDestroyCommandPool(device, commandPool, NULL);
 
     log_trace("调用了 vkDestroyCommandPool！");
+}
+
+
+void allocateCommandBuffers(
+    VkDevice                            device,
+    const VkCommandBufferAllocateInfo*  pAllocateInfo,
+    VkCommandBuffer*                    pCommandBuffers
+)
+{
+    if (pCommandBuffers == NULL)
+    {
+        log_error("%s(): 传入了无效地址，pCommandBuffers 不得为 NULL！"
+            "其必须是指向 VkCommandBuffer 句柄数组的有效地址.");
+
+        return;
+    }
+
+    VkResult result = vkAllocateCommandBuffers(device,
+                          pAllocateInfo,
+                          pCommandBuffers);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to allocate VkCommandBuffer(s)! Error Code(VkResult): %d",
+            result);
+
+        *pCommandBuffers = NULL;
+
+        return;
+    }
+
+    log_info("分配了 %u 个 VkCommandBuffer.", pAllocateInfo->commandBufferCount);
+}
+
+
+bool beginCommandBuffer(
+    const char*                     label,
+    VkCommandBuffer                 commandBuffer,
+    const VkCommandBufferBeginInfo  *pBeginInfo
+)
+{
+    VkResult result = vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to begin recording a VkCommandBuffer (%s)!"
+            "Error Code(VkResult): %d",
+            label, result);
+
+        return false;
+    }
+
+    log_trace("开始录制 VkCommandBuffer (%s)...", label);
+
+    return true;
+}
+
+
+bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
+{
+    VkResult result = vkEndCommandBuffer(commandBuffer);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to end recording a VkCommandBuffer (%s)!"
+            "Error Code(VkResult): %d",
+            label, result);
+
+        return false;
+    }
+
+    log_trace("结束录制 VkCommandBuffer (%s)！", label);
+
+    return true;
 }
 
 

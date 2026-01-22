@@ -9,14 +9,20 @@ public class HelloTriangleApplication
     {
         try
         {
-            InitializeWindow();
-            InitializeRenderer();
+            Initialize();
+            Ready();
             MainLoop();
         }
         finally
         {
             CleanUp();
         }
+    }
+
+    private void Initialize()
+    {
+        InitializeWindow();
+        InitializeRenderer();
     }
 
     private void InitializeWindow()
@@ -27,10 +33,16 @@ public class HelloTriangleApplication
             throw new InvalidOperationException("Failed to create a window.");
     }
 
-    public void InitializeRenderer()
+    private void InitializeRenderer()
     {
         if (!Renderer.Initialize(Window.Handle))
             throw new InvalidOperationException("Failed to initialize renderer!");
+    }
+
+    private void Ready()
+    {
+        if (!Renderer.Ready())
+            throw new InvalidOperationException("An error occurred when calling Renderer.Ready()!");
     }
 
     private void MainLoop()

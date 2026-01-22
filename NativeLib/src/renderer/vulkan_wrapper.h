@@ -148,6 +148,40 @@ VkCommandPool createCommandPool(
 void destroyCommandPool(VkDevice device, VkCommandPool commandPool);
 
 
+/// @brief 分配（多个）命令缓冲区.
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pAllocateInfo 给定的命令缓冲区分配信息
+/// @param pCommandBuffers 输出参数作为目标，要求指向有效的 VkCommandBuffer 句柄的数组
+void allocateCommandBuffers(
+    VkDevice                            device,
+    const VkCommandBufferAllocateInfo*  pAllocateInfo,
+    VkCommandBuffer*                    pCommandBuffers
+);
+
+
+/// @brief 开始录制给定命令缓冲区.
+///
+/// @param label 描述性标签，仅供输出日志信息用
+/// @param commandBuffer 目标命令缓冲区
+/// @param pBeginInfo 给定的开始录制信息
+///
+/// @return 函数执行成功返回 `true`，反之遇到错误返回 `false`
+bool beginCommandBuffer(
+    const char*                     label,
+    VkCommandBuffer                 commandBuffer,
+    const VkCommandBufferBeginInfo  *pBeginInfo
+);
+
+
+/// @brief 结束录制给定命令缓冲区.
+///
+/// @param label 描述性标签，仅供输出日志信息用
+/// @param commandBuffer 目标命令缓冲区
+///
+/// @return 函数执行成功返回 `true`，反之遇到错误返回 `false`
+bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer);
+
+
 /// @brief 创建渲染通道，其用于为管线提供目标帧缓冲区中关于附件的信息.
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄

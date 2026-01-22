@@ -1,6 +1,7 @@
 #include "renderer_context.h"
 
 static bool triangle_create_command_pool(RendererContext* pContext);
+static bool triangle_allocate_command_buffer(RendererContext* pContext);
 static bool triangle_create_render_pass(RendererContext* pContext);
 static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext);
 static bool triangle_create_graphics_pipeline(
@@ -72,7 +73,10 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window)
         return false;
 
 
-    if (!triangle_create_command_pool(pContext))                     // 为绘制命令创建命令池
+    if (!triangle_create_command_pool(pContext))            // 为绘制命令创建命令池
+        return false;
+
+    if (!triangle_allocate_command_buffer(pContext))        // 为三角形绘制分配命令缓冲区
         return false;
 
     if (!triangle_create_render_pass(pContext))             // 为三角形绘制创建渲染通道
@@ -123,6 +127,23 @@ static bool triangle_create_command_pool(RendererContext* pContext)
 
     pContext->triangle_commandPool = createCommandPool(pContext->device, &createInfo);
     if (pContext->triangle_commandPool == VK_NULL_HANDLE)
+        return false;
+
+    return true;
+}
+
+static bool triangle_allocate_command_buffer(RendererContext* pContext)
+{
+    VkCommandBufferAllocateInfo allocateInfo = {};
+    allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfo.commandPool        = pContext->triangle_commandPool;
+    allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocateInfo.commandBufferCount = 1;
+
+    allocateCommandBuffers(pContext->device,
+        &allocateInfo,
+        &pContext->triangle_commandBuffer);
+    if (pContext->triangle_commandBuffer == VK_NULL_HANDLE)
         return false;
 
     return true;
@@ -471,6 +492,73 @@ void destroy_renderer_context(RendererContext* pContext)
     log_info("销毁渲染器上下文完毕.");
 
     return;
+}
+
+
+bool triangle_record_command_buffer(
+    RendererContext*    pContext,
+    uint32_t            swapchainFramebufferIndex
+)
+{
+    char* label = "draw triangle";
+
+    // 1.开始录制命令缓冲区
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.pInheritanceInfo = NULL;
+
+    if (!beginCommandBuffer(label, pContext->triangle_commandBuffer, &commandBufferBeginInfo))
+        return false;
+
+    // 2.开始录制渲染通道
+    VkRenderPassBeginInfo renderPassBeginInfo = {};
+    renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass        = pContext->triangle_renderPass;
+    renderPassBeginInfo.framebuffer       = pContext->
+        triangle_swapchainFramebuffers[swapchainFramebufferIndex];
+    renderPassBeginInfo.renderArea.offset = (VkOffset2D){0, 0};
+    renderPassBeginInfo.renderArea.extent = pContext->swapchainExtent;
+    // 黑色清屏
+    VkClearValue clearValue = {.color = {.float32 = {0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassBeginInfo.clearValueCount   = 1;
+    renderPassBeginInfo.pClearValues      = &clearValue;
+
+    vkCmdBeginRenderPass(pContext->triangle_commandBuffer,
+        &renderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+        // 2.1.绑定渲染管线
+        vkCmdBindPipeline(pContext->triangle_commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pContext->triangle_pipeline);
+
+        // 2.2.处理管线的动态状态
+        VkViewport viewport = {};
+        viewport.x          = 0.0f;
+        viewport.y          = 0.0f;
+        viewport.width      = pContext->swapchainExtent.width;
+        viewport.height     = pContext->swapchainExtent.height;
+        viewport.minDepth   = 0.0f;
+        viewport.maxDepth   = 1.0f;
+        vkCmdSetViewport(pContext->triangle_commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor = {};
+        scissor.offset   = (VkOffset2D){0, 0};
+        scissor.extent   = pContext->swapchainExtent;
+        vkCmdSetScissor(pContext->triangle_commandBuffer, 0, 1, &scissor);
+
+        // 2.3.Draw Call，在这里三角形绘制，其顶点数据定义在着色器中，共三个顶点
+        vkCmdDraw(pContext->triangle_commandBuffer, 3, 1, 0, 0);
+
+    // 3.结束录制渲染通道
+    vkCmdEndRenderPass(pContext->triangle_commandBuffer);
+    
+    // 4.结束录制命令缓冲区
+    if (!endCommandBuffer(label, pContext->triangle_commandBuffer))
+        return false;
+
+    return true;
 }
 
 

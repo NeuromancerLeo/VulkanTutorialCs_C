@@ -14,7 +14,8 @@ public static partial class Renderer
     private static partial bool rendererInitialize(GLFWwindowSafeHandle window);
 
     [LibraryImport(library)]
-    private static partial void rendererReady();
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static partial bool rendererReady();
 
     [LibraryImport(library)]
     private static partial void rendererBeginFrame();
@@ -31,9 +32,9 @@ public static partial class Renderer
         return rendererInitialize(window);
     }
 
-    public static void Ready()
+    public static bool Ready()
     {
-        rendererReady();
+        return rendererReady();
     }
 
     public static void BegineFrame()
