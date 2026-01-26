@@ -272,3 +272,31 @@ VkPipeline createGraphicsPipeline(
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pipeline 要销毁的管线句柄
 void destroyPipeline(VkDevice device, VkPipeline pipeline);
+
+
+VkSemaphore createSemaphore(
+    const char*             label,
+    VkDevice                device,
+    VkSemaphoreCreateInfo*  pCreateInfo    
+);
+
+
+void destroySemaphore(VkDevice device, VkSemaphore semaphore);
+
+
+VkFence createFence(
+    const char*         label,
+    VkDevice            device,
+    VkFenceCreateInfo*  pCreateInfo    
+);
+
+
+void destroyFence(VkDevice device, VkFence fence);
+
+
+void queueSubmit(
+    VkQueue             queue,
+    uint32_t            submitCount,
+    const VkSubmitInfo  *pSubmitInfos,
+    VkFence             fence
+);

@@ -954,14 +954,14 @@ bool beginCommandBuffer(
     VkResult result = vkBeginCommandBuffer(commandBuffer, pBeginInfo);
     if (result != VK_SUCCESS)
     {
-        log_error("Failed to begin recording a VkCommandBuffer (%s)!"
+        log_error("Failed to begin recording a VkCommandBuffer [label: %s]!"
             "Error Code(VkResult): %d",
             label, result);
 
         return false;
     }
 
-    log_trace("开始录制 VkCommandBuffer (%s)...", label);
+    // log_trace("开始录制 VkCommandBuffer [label: %s]...", label);
 
     return true;
 }
@@ -972,14 +972,14 @@ bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
     VkResult result = vkEndCommandBuffer(commandBuffer);
     if (result != VK_SUCCESS)
     {
-        log_error("Failed to end recording a VkCommandBuffer (%s)!"
+        log_error("Failed to end recording a VkCommandBuffer [label: %s]!"
             "Error Code(VkResult): %d",
             label, result);
 
         return false;
     }
 
-    log_trace("结束录制 VkCommandBuffer (%s)！", label);
+    // log_trace("结束录制 VkCommandBuffer [label: %s]！", label);
 
     return true;
 }
@@ -1227,3 +1227,78 @@ void destroyPipeline(VkDevice device, VkPipeline pipeline)
     log_trace("调用了 vkDestroyPipeline!");
 }
 
+
+VkSemaphore createSemaphore(
+    const char*             label,
+    VkDevice                device,
+    VkSemaphoreCreateInfo*  pCreateInfo    
+)
+{
+    VkSemaphore semaphore = VK_NULL_HANDLE;
+    VkResult result = vkCreateSemaphore(device, pCreateInfo, NULL, &semaphore);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkSemaphore [label:%s]! Error Code(VkResult): %d",
+            label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("创建了一个 VkSemaphore [label:%s].", label);
+
+    return semaphore;
+}
+
+
+void destroySemaphore(VkDevice device, VkSemaphore semaphore)
+{
+    vkDestroySemaphore(device, semaphore, NULL);
+
+    log_trace("调用了 vkDestroySemaphore!");
+}
+
+
+VkFence createFence(
+    const char*         label,
+    VkDevice            device,
+    VkFenceCreateInfo*  pCreateInfo    
+)
+{
+    VkFence fence = VK_NULL_HANDLE;
+    VkResult result = vkCreateFence(device, pCreateInfo, NULL, &fence);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkFence [label:%s]! Error Code(VkResult): %d",
+            label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("创建了一个 VkFence [label:%s].", label);
+
+    return fence;
+}
+
+
+void destroyFence(VkDevice device, VkFence fence)
+{
+    vkDestroyFence(device, fence, NULL);
+
+    log_trace("调用了 vkDestroyFence!");
+}
+
+
+void queueSubmit(
+    VkQueue             queue,
+    uint32_t            submitCount,
+    const VkSubmitInfo  *pSubmitInfos,
+    VkFence             fence
+)
+{
+    VkResult result = vkQueueSubmit(queue, submitCount, pSubmitInfos, fence);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to submit command buffer(s)! Error Code(VkResult): %d",
+            result);
+    }
+}

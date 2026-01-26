@@ -18,6 +18,9 @@ public static partial class Renderer
     private static partial bool rendererReady();
 
     [LibraryImport(library)]
+    private static partial void rendererDrawFrame();
+
+    [LibraryImport(library)]
     private static partial void rendererBeginFrame();
 
     [LibraryImport(library)]
@@ -35,6 +38,11 @@ public static partial class Renderer
     public static bool Ready()
     {
         return rendererReady();
+    }
+
+    public static void DrawFrame()
+    {
+        rendererDrawFrame();
     }
 
     public static void BegineFrame()

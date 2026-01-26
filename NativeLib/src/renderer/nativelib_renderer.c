@@ -22,11 +22,13 @@ EX_API bool rendererInitialize(GLFWwindow* window)
 
 EX_API bool rendererReady()
 {
-    // 为绘制三角形录制命令缓冲区
-    if (!triangle_record_command_buffer(g_context, 0))
-        return false;
-
     return true;
+}
+
+
+EX_API void rendererDrawFrame()
+{
+    triangle_draw_frame(g_context);
 }
 
 

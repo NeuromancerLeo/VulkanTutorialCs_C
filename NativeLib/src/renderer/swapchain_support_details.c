@@ -140,7 +140,16 @@ VkPresentModeKHR get_optimal_prensent_mode(
         }
     }
 
-    log_warn("物理设备不支持 MAILBOX 呈现模式，将使用 FIFO 呈现模式！");
+    for (int i = 0; i < presentModeCount; i++)
+    {
+        // 或选择为 VK_PRESENT_MODE_IMMEDIATE_KHR
+        if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        {
+            return VK_PRESENT_MODE_IMMEDIATE_KHR;
+        }
+    }
+
+    log_warn("物理设备不支持 MAILBOX 和 IMMEDIATE 呈现模式，将使用 FIFO 呈现模式！");
 
     return VK_PRESENT_MODE_FIFO_KHR;
 }

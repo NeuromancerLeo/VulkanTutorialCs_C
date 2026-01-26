@@ -13,6 +13,9 @@ EX_API bool rendererInitialize(GLFWwindow* window);
 EX_API bool rendererReady();
 
 
+EX_API void rendererDrawFrame();
+
+
 EX_API void rendererBeginFrame();
 
 

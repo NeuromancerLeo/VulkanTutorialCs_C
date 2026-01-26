@@ -50,6 +50,8 @@ public class HelloTriangleApplication
         while (!Window.ShouldClose())
         {
             Window.PollEvents();
+
+            Renderer.DrawFrame();
         }
     }
 

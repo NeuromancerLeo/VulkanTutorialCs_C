@@ -5,10 +5,13 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
+
+#define MAX_FRAMES_IN_FLIGHT 2
 
 /// @brief 渲染器上下文结构体，使用 new_renderer_context 获取一个该结构体句柄.
 typedef struct RendererContext {
@@ -32,7 +35,7 @@ typedef struct RendererContext {
 // 绘制 triangle 所需的（管线）相关对象
 //（先硬编码，等我搞清楚了这一堆对象的依赖关系我再想扩展性设计的事）
     VkCommandPool       triangle_commandPool;  
-    VkCommandBuffer     triangle_commandBuffer;
+    VkCommandBuffer     triangle_commandBuffers[MAX_FRAMES_IN_FLIGHT];
 
     VkRenderPass        triangle_renderPass;    
 
@@ -42,6 +45,13 @@ typedef struct RendererContext {
     VkShaderModule      triangle_fragmentShaderModule;
     VkPipelineLayout    triangle_pipelineLayout;
     VkPipeline          triangle_pipeline;
+
+    // 信号量：意味着一个交换链图像已被获取，其可安全渲染
+    VkSemaphore         swapchainImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
+    // 信号量：意味着图像渲染完毕，其可安全呈现（数量为交换链图像数量）
+    VkSemaphore*        renderFinishedSemaphores;
+    // 栅栏：表示一个渲染进行中的帧（执行命令缓冲区），用于防止命令缓冲区发生竞态
+    VkFence             frameInFlightFences[MAX_FRAMES_IN_FLIGHT];
 } RendererContext;
 
 
@@ -66,7 +76,4 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window);
 void destroy_renderer_context(RendererContext* pContext);
 
 
-bool triangle_record_command_buffer(
-    RendererContext*    pContext,
-    uint32_t            swapchainImageIndex
-);
+void triangle_draw_frame(RendererContext* pContext);
