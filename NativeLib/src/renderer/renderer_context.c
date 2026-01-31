@@ -168,20 +168,19 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 1.填写 VkAttachmentDescription 来描述附件（使用多少个附件就要填多少个）
     // 对于渲染一帧三角形，我们只有一个附件，即（作颜色附件的）交换链中的图像
     // 所以这里只需要填一个该结构体来描述这个附件即可
-    VkAttachmentDescription colorAttachment01Description = {};
+    VkAttachmentDescription colorAttachment0Description = {};
     // 该附件格式对应为交换链图像的格式
-    colorAttachment01Description.format  = pContext->swapchainImageFormat;
-    colorAttachment01Description.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment01Description.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment01Description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment01Description.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment01Description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    // 因为加载时都会清除，所以附件的初始布局可直接描述为未定义（是期望的）
-    // 我们希望渲染完后将这个附件进行窗口呈现，故最终布局描述为呈现源（是会自动转换的）
-    colorAttachment01Description.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment01Description.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    // 注：附件的布局信息是渲染通道内的子通道共用的，这引出了布局转换所带来的同步问题（见下文
-    // 子通道阶段依赖的定义）
+    colorAttachment0Description.format  = pContext->swapchainImageFormat;
+    colorAttachment0Description.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment0Description.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment0Description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment0Description.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment0Description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    // 渲染通道开始前该附件期望的初始布局，因为加载时都会清除，所以可直接描述为未定义
+    // 渲染通道结束后该附件需要自动转换的最终布局，我们希望渲染完后将这个附件进行窗口呈现，
+    // 故将其描述为呈现源
+    colorAttachment0Description.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment0Description.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     // 2.定义子通道
     // 渲染一帧三角形，我们只描述一个子通道即可
@@ -189,39 +188,45 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 首先填写 VkAttachmentReference 来描述该子通道会引用的附件
     // attachment 指定针对 VkAttachmentDescription 的索引值
     // layout 指定该子通道开始时附件需要转化到的布局
-    VkAttachmentReference colorAttachment01Reference = {};
-    colorAttachment01Reference.attachment = 0;
-    colorAttachment01Reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference colorAttachment0Reference = {};
+    colorAttachment0Reference.attachment = 0;
+    colorAttachment0Reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    // 注：VkAttachmentReference.layout 引出了布局转换所带来的同步问题，当使用该附件 Ref 的
+    // 子通道开始时，Vulkan 会自动对附件根据 layout 字段进行转换.
+    // 在这里，我们的渲染通道，即 0 号子通道开始时，首次使用的附件，其布局从
+    // Desc.initialLayout 到对应 Ref.layout 的转换也会马上开始 —— 同步问题出现，倘若使用的
+    // 附件尚未可用（这里也就是请求交换链图像），则其布局的转换便会导致错误（见下文
+    // 子通道阶段依赖的定义）
 
     // 2.5.填写 VkSubpassDescription 来定义子通道
     // 以下代码意为：
-    // 该子通道使用图形管线，要使用 colorAttachment01Reference 引用的颜色附件
-    VkSubpassDescription subpass01Description = {};
-    subpass01Description.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    // 该子通道使用图形管线，要使用 colorAttachment0Reference 引用的颜色附件
+    VkSubpassDescription subpass0Description = {};
+    subpass0Description.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
     // 绑定颜色附件数组
     // 注：该数组索引值直接对应片段着色器中的代码： 
     // layout(location = 索引值) out vec4 outColorxxx; （用于输出到颜色附件）
-    subpass01Description.colorAttachmentCount = 1;
-    subpass01Description.pColorAttachments    = &colorAttachment01Reference;
+    subpass0Description.colorAttachmentCount = 1;
+    subpass0Description.pColorAttachments    = &colorAttachment0Reference;
 
     // 3.定义子通道 `阶段` 依赖
     // 通过填写 VkSubpassDependency 来描述
     // 以下代码意为：
     // dst 子通道的 xx 阶段（在下面指定），要在 src 子通道在 xx 阶段（在下面指定）的执行完毕后
     // 才会执行（以达到控制执行顺序并保证内存同步的目的） 
-    VkSubpassDependency subpass01Dependency = {};
+    VkSubpassDependency subpass0Dependency = {};
     // 源为 VK_SUBPASS_EXTERNAL 特指该 渲染通道 之前的外部操作（隐式子通道）
-    subpass01Dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+    subpass0Dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
     // 这里指定为颜色附件输出阶段
-    subpass01Dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass0Dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     // 指定源子通道执行时的内存访问权限，这里只是等待源执行完毕，取 0 为不要求
-    subpass01Dependency.srcAccessMask = 0;
+    subpass0Dependency.srcAccessMask = 0;
     // 目标为该渲染通道的第 0 个子通道（这里也是唯一一个）
-    subpass01Dependency.dstSubpass    = 0;
+    subpass0Dependency.dstSubpass    = 0;
     // 这里意为依赖满足后，目标子通道的颜色附件输出阶段才会开始执行
-    subpass01Dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass0Dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     // 这里意为目标子通道该阶段需要 写入颜色附件 的内存访问权限
-    subpass01Dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    subpass0Dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     
 
     // 4.创建渲染通道
@@ -229,11 +234,11 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     VkRenderPassCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     createInfo.attachmentCount = 1;    // 引用 VkAttachmentDescription 数组
-    createInfo.pAttachments    = &colorAttachment01Description;
+    createInfo.pAttachments    = &colorAttachment0Description;
     createInfo.subpassCount    = 1;    // 引用 VkSubpassDescription 数组
-    createInfo.pSubpasses      = &subpass01Description;
+    createInfo.pSubpasses      = &subpass0Description;
     createInfo.dependencyCount = 1;    // 应用 VkSubpassDependency 数组
-    createInfo.pDependencies   = &subpass01Dependency;
+    createInfo.pDependencies   = &subpass0Dependency;
 
     pContext->triangle_renderPass = createRenderPass(pContext->device, &createInfo);
     if (pContext->triangle_renderPass == VK_NULL_HANDLE)
@@ -706,8 +711,15 @@ void triangle_draw_frame(RendererContext* pContext)
     };
 
     // 指定所有等待信号量对应的等待阶段
-    //（这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，
-    // 所以在此阶段等待 交换链图像可用 信号量）
+    //（这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段
+    // 等待 交换链图像可用 信号量）
+    //（注：以上说法是错误的，交换链图像实际上在渲染通道开始时，引用它的子通道就会立刻开始对其
+    // 进行布局转换，所以这里的等待阶段应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT（意为管线
+    // 开始前，此时布局转换还未执行）才对；
+    // 或者我们定义子通道依赖，告诉 Vulkan 子通道的...呃...？）
+
+    // 我已经脑死亡了...
+
     VkPipelineStageFlags waitOnStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };

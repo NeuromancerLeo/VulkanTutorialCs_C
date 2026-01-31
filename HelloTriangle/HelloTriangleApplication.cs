@@ -57,7 +57,7 @@ public class HelloTriangleApplication
 
     private void CleanUp()
     {
-        Console.WriteLine($"{nameof(CleanUp)}:");
+        Console.WriteLine($"{nameof(HelloTriangleApplication)}.{nameof(CleanUp)}():");
 
         Renderer.Release();
 
