@@ -691,12 +691,17 @@ void triangle_draw_frame(RendererContext* pContext)
     // 注：这里必须说明的是，信号量是 “被消耗的”，一旦其被触发，谁等待它，谁就负责重置它
     // 所以这里提交了呈现，进入下一个循环时，假设上个循环的呈现操作不够快，
     // 还没来得及 “消耗” 指定的 presentInfo.pWaitSemaphores 中的信号量时，
-    // 这些信号量在下个循环，甚至是下个循环执行到提交渲染操作（调用 vkQueueSubmit），
-    // 甚至是 GPU 执行渲染操作完毕时，将要触发指定要触发的信号量（也就是呈现要等待的信号量）时，
-    // ——它们还是处于已触发状态，这便导致了验证层 VUID-vkQueueSubmit-pSignalSemaphores-00067
-    // 报错.
-    // 总而言之，当你保证了代码成功同步了渲染操作的逻辑，呈现操作逻辑是另一个你需要进行同步
-    // 的东西（而你很可能会忽略它，基于各种不正确的假设）
+    // 这些信号量在下个循环，甚至是下个循环执行到提交渲染操作（调用 vkQueueSubmit）、GPU 执行
+    // 渲染操作完毕，将要触发指定要触发的信号量（也就是呈现要等待的信号量）时，
+    // 它们都还未被上个循环的呈现操作消耗掉（仍处于已触发状态），这便导致了验证层
+    // VUID-vkQueueSubmit-pSignalSemaphores-00067 报错.
+    // 简单来说，vkQueuePresentKHR() 不像 vkQueueSubmit()，前者并没有提供触发信号量或栅栏之类
+    // 的同步原语的方法 (在没有扩展的情况下)，所以重用呈现操作所消耗的信号量对象的时机并不太清晰，
+    // 详见 https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html.
+    // 推荐的解决方案是，基于交换链图像的数量创建多个信号量，每次 InFlight 循环所用的交换链图像
+    // 其渲染和呈现操作均使用 swapchainImageIndex 来取信号量使用，一个交换链图像对应一个信号量，
+    // 这样上个循环使用的信号量就不关下个循环的事，等到下一次使用同一个信号量时，消耗它的呈现操作
+    // 必然是早就完成了的.
     vkQueuePresentKHR(pContext->presentationQueue, &presentInfo);
 
     frameInFlightIndex = (frameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
