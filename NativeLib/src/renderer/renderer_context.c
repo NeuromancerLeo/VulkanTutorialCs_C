@@ -194,9 +194,8 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 注：VkAttachmentReference.layout 引出了布局转换所带来的同步问题，当使用该附件 Ref 的
     // 子通道开始时，Vulkan 会自动对附件根据 layout 字段进行转换.
     // 在这里，我们的渲染通道，即 0 号子通道开始时，首次使用的附件，其布局从
-    // Desc.initialLayout 到对应 Ref.layout 的转换会在 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-    // 阶段就马上开始 —— 同步问题出现，倘若使用的附件尚未可用（这里也就是请求交换链图像），
-    // 则转换操作会发生错误.
+    // Desc.initialLayout 到对应 Ref.layout 的转换会在任意阶段开始 —— 同步问题出现，
+    // 倘若使用的附件尚未可用（这里也就是请求交换链图像），则转换操作会发生错误.
     // 一个解决方案是在 vkQueueSubmit 的提交信息里将等待阶段设为
     // VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT，这样整个管线都会等待至图像可用才会开始，但这种方法
     // 简单粗暴，会导致不必要的空闲等待；
@@ -648,8 +647,8 @@ void triangle_draw_frame(RendererContext* pContext)
     // 所以更好的方法是显式定义与外部子通道的子通道依赖，
     // 告诉 Vulkan 我们该子通道的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真正
     // 开始使用交换链图像的阶段）依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）的 
-    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段——这个阶段的完成意味着请求的交换链
-    // 图像可用）
+    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段 —— 这个阶段的完成意味着请求的
+    // 交换链图像可用）
     VkPipelineStageFlags waitOnStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
