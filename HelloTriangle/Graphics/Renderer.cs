@@ -21,12 +21,6 @@ public static partial class Renderer
     private static partial void rendererDrawFrame();
 
     [LibraryImport(library)]
-    private static partial void rendererBeginFrame();
-
-    [LibraryImport(library)]
-    private static partial void rendererEndFrame();
-
-    [LibraryImport(library)]
     private static partial void rendererRelease();
 
 
@@ -43,16 +37,6 @@ public static partial class Renderer
     public static void DrawFrame()
     {
         rendererDrawFrame();
-    }
-
-    public static void BegineFrame()
-    {
-        rendererBeginFrame();
-    }
-
-    public static void EndFrame()
-    {
-        rendererEndFrame();
     }
 
     public static void Release()

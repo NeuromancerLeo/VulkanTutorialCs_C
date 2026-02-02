@@ -6,10 +6,8 @@ static bool triangle_create_render_pass(RendererContext* pContext);
 static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext);
 static bool triangle_create_graphics_pipeline(
     RendererContext*    pContext,
-
     const char*         vertexSpvFilePath,
     const char*         vertexSpvEntryPoint,
-
     const char*         fragmentSpvFilePath,
     const char*         fragmentSpvEntryPoint
 );
@@ -172,7 +170,9 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 该附件格式对应为交换链图像的格式
     colorAttachment0Description.format  = pContext->swapchainImageFormat;
     colorAttachment0Description.samples = VK_SAMPLE_COUNT_1_BIT;
+    // 渲染通道开始时的 loadOp
     colorAttachment0Description.loadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    // 渲染通道结束时的 storeOp
     colorAttachment0Description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachment0Description.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment0Description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -194,9 +194,13 @@ static bool triangle_create_render_pass(RendererContext* pContext)
     // 注：VkAttachmentReference.layout 引出了布局转换所带来的同步问题，当使用该附件 Ref 的
     // 子通道开始时，Vulkan 会自动对附件根据 layout 字段进行转换.
     // 在这里，我们的渲染通道，即 0 号子通道开始时，首次使用的附件，其布局从
-    // Desc.initialLayout 到对应 Ref.layout 的转换也会马上开始 —— 同步问题出现，倘若使用的
-    // 附件尚未可用（这里也就是请求交换链图像），则其布局的转换便会导致错误（见下文
-    // 子通道阶段依赖的定义）
+    // Desc.initialLayout 到对应 Ref.layout 的转换会在 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+    // 阶段就马上开始 —— 同步问题出现，倘若使用的附件尚未可用（这里也就是请求交换链图像），
+    // 则转换操作会发生错误.
+    // 一个解决方案是在 vkQueueSubmit 的提交信息里将等待阶段设为
+    // VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT，这样整个管线都会等待至图像可用才会开始，但这种方法
+    // 简单粗暴，会导致不必要的空闲等待；
+    // 另一种方法就是定义内部子通道对外部子通道的依赖（见下文子通道阶段依赖的定义）.
 
     // 2.5.填写 VkSubpassDescription 来定义子通道
     // 以下代码意为：
@@ -287,10 +291,8 @@ static bool trigangle_create_swapchain_framebuffers(RendererContext* pContext)
 
 static bool triangle_create_graphics_pipeline(
     RendererContext*    pContext,
-
     const char*         vertexSpvFilePath,
     const char*         vertexSpvEntryPoint,
-
     const char*         fragmentSpvFilePath,
     const char*         fragmentSpvEntryPoint
 )
@@ -451,81 +453,6 @@ static bool triangle_create_graphics_pipeline(
     // 8.创建图形管线
     pContext->triangle_pipeline = createGraphicsPipeline(pContext->device, &createInfo);
     if (pContext->triangle_pipeline == VK_NULL_HANDLE)
-        return false;
-
-    return true;
-}
-
-static bool triangle_record_command_buffer(
-    RendererContext*    pContext,
-    uint32_t            frameInFlightIndex,
-    uint32_t            swapchainFramebufferIndex
-)
-{
-    char* label = "draw triangle";
-
-    VkCommandBuffer commandBuffer = 
-        pContext->triangle_commandBuffers[frameInFlightIndex];
-
-    // 1.开始录制命令缓冲区
-    VkCommandBufferBeginInfo commandBufferBeginInfo = {};
-    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBeginInfo.flags = 0;
-    commandBufferBeginInfo.pInheritanceInfo = NULL;
-
-    if (!beginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
-        return false;
-
-    // 2.开始录制渲染通道
-    VkRenderPassBeginInfo renderPassBeginInfo = {};
-    renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass        = pContext->triangle_renderPass;
-    renderPassBeginInfo.framebuffer       = pContext->
-        triangle_swapchainFramebuffers[swapchainFramebufferIndex];
-    renderPassBeginInfo.renderArea.offset = (VkOffset2D){0, 0};
-    renderPassBeginInfo.renderArea.extent = pContext->swapchainExtent;
-    // 黑色清屏
-    VkClearValue clearValue = {.color = {.float32 = {0.0f, 0.0f, 0.0f, 1.0f}}};
-    renderPassBeginInfo.clearValueCount   = 1;
-    renderPassBeginInfo.pClearValues      = &clearValue;
-
-    // 注：调用 vkCmdBeginRenderPass() 会隐式开始第 0 个 subpass
-    vkCmdBeginRenderPass(commandBuffer,
-        &renderPassBeginInfo,
-        VK_SUBPASS_CONTENTS_INLINE);
-
-        // 2.1.为第 0 个 subpass 绑定渲染管线
-        vkCmdBindPipeline(commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pContext->triangle_pipeline);
-
-        // 2.2.处理管线的动态状态
-        VkViewport viewport = {};
-        viewport.x          = 0.0f;
-        viewport.y          = 0.0f;
-        viewport.width      = pContext->swapchainExtent.width;
-        viewport.height     = pContext->swapchainExtent.height;
-        viewport.minDepth   = 0.0f;
-        viewport.maxDepth   = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor = {};
-        scissor.offset   = (VkOffset2D){0, 0};
-        scissor.extent   = pContext->swapchainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        // 2.3.Draw Call，在这里三角形绘制，其顶点数据定义在着色器中，共三个顶点
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-
-    // 对于绘制三角形的 RenderPass，我们只有一个 subpass，所以现在可以结束 RenderPass 了
-    // （对于多个 subpass 的 RenderPass，我们要按对应 RenderPass 的设计，
-    // 调用 vkCmdNextSubpass 以表示进入下一个 subpass）
-
-    // 3.结束录制渲染通道
-    vkCmdEndRenderPass(commandBuffer);
-    
-    // 4.结束录制命令缓冲区
-    if (!endCommandBuffer(label, commandBuffer))
         return false;
 
     return true;
@@ -701,7 +628,7 @@ void triangle_draw_frame(RendererContext* pContext)
     vkResetCommandBuffer(pContext->triangle_commandBuffers[frameInFlightIndex], 0);
 
     // 3.录制绘制三角形用的命令缓冲区，传入对应交换链图像索引（同时对应帧缓冲区索引）
-    triangle_record_command_buffer(pContext, frameInFlightIndex ,swapchainImageIndex);
+    triangle_record_command_buffer(pContext, frameInFlightIndex, swapchainImageIndex);
     
     // 4.准备提交命令缓冲区
     
@@ -713,13 +640,16 @@ void triangle_draw_frame(RendererContext* pContext)
     // 指定所有等待信号量对应的等待阶段
     //（这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段
     // 等待 交换链图像可用 信号量）
-    //（注：以上说法是错误的，交换链图像实际上在渲染通道开始时，引用它的子通道就会立刻开始对其
-    // 进行布局转换，所以这里的等待阶段应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT（意为管线
-    // 开始前，此时布局转换还未执行）才对；
-    // 或者我们定义子通道依赖，告诉 Vulkan 子通道的...呃...？）
-
-    // 我已经脑死亡了...
-
+    //（注：以上说法是错误的，实际上在渲染通道开始时，由于没有定义外部子通道依赖，隐式
+    // 的外部子通道依赖会使得引用图像的子通道（这里是引用了交换链图像）会在任何可能的时间点对
+    // 这些图像进行布局转换（Desc.initLayout 到 Ref.layout），所以从这个方面看，
+    // 这里的 waitOnStages 应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT 阶段才对，但这样设置
+    // 会导致不必要的空闲等待，毕竟在这里我们子通道前期阶段的执行确实不会用到交换链图像；
+    // 所以更好的方法是显式定义与外部子通道的子通道依赖，
+    // 告诉 Vulkan 我们该子通道的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真正
+    // 开始使用交换链图像的阶段）依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）的 
+    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段——这个阶段的完成意味着请求的交换链
+    // 图像可用）
     VkPipelineStageFlags waitOnStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
@@ -771,5 +701,80 @@ void triangle_draw_frame(RendererContext* pContext)
     vkQueuePresentKHR(pContext->presentationQueue, &presentInfo);
 
     frameInFlightIndex = (frameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+static bool triangle_record_command_buffer(
+    RendererContext*    pContext,
+    uint32_t            frameInFlightIndex,
+    uint32_t            swapchainFramebufferIndex
+)
+{
+    char* label = "draw triangle";
+
+    VkCommandBuffer commandBuffer = 
+        pContext->triangle_commandBuffers[frameInFlightIndex];
+
+    // 1.开始录制命令缓冲区
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = 0;
+    commandBufferBeginInfo.pInheritanceInfo = NULL;
+
+    if (!beginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
+        return false;
+
+    // 2.开始录制渲染通道
+    VkRenderPassBeginInfo renderPassBeginInfo = {};
+    renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBeginInfo.renderPass        = pContext->triangle_renderPass;
+    renderPassBeginInfo.framebuffer       = pContext->
+        triangle_swapchainFramebuffers[swapchainFramebufferIndex];
+    renderPassBeginInfo.renderArea.offset = (VkOffset2D){0, 0};
+    renderPassBeginInfo.renderArea.extent = pContext->swapchainExtent;
+    // 黑色清屏
+    VkClearValue clearValue = {.color = {.float32 = {0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassBeginInfo.clearValueCount   = 1;
+    renderPassBeginInfo.pClearValues      = &clearValue;
+
+    // 注：调用 vkCmdBeginRenderPass() 会隐式开始第 0 个 subpass
+    vkCmdBeginRenderPass(commandBuffer,
+        &renderPassBeginInfo,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+        // 2.1.为第 0 个 subpass 绑定渲染管线
+        vkCmdBindPipeline(commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pContext->triangle_pipeline);
+
+        // 2.2.处理管线的动态状态
+        VkViewport viewport = {};
+        viewport.x          = 0.0f;
+        viewport.y          = 0.0f;
+        viewport.width      = pContext->swapchainExtent.width;
+        viewport.height     = pContext->swapchainExtent.height;
+        viewport.minDepth   = 0.0f;
+        viewport.maxDepth   = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor = {};
+        scissor.offset   = (VkOffset2D){0, 0};
+        scissor.extent   = pContext->swapchainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        // 2.3.Draw Call，在这里三角形绘制，其顶点数据定义在着色器中，共三个顶点
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    // 对于绘制三角形的 RenderPass，我们只有一个 subpass，所以现在可以结束 RenderPass 了
+    // （对于多个 subpass 的 RenderPass，我们要按对应 RenderPass 的设计，
+    // 调用 vkCmdNextSubpass 以表示进入下一个 subpass）
+
+    // 3.结束录制渲染通道
+    vkCmdEndRenderPass(commandBuffer);
+    
+    // 4.结束录制命令缓冲区
+    if (!endCommandBuffer(label, commandBuffer))
+        return false;
+
+    return true;
 }
 

@@ -9,6 +9,16 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <Target Name="CopyThirdPartyLibraries_win64" AfterTargets="Build"
+          Condition="'$(OS)' == 'Windows_NT'">
+    <ItemGroup>
+      <DLLSource Include="../NativeLib/bin/glfw3.dll"></DLLSource>
+    </ItemGroup>
+    <Copy SourceFiles="@(DLLSource)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="True"/>
+  </Target>
+
   <Target Name="CopyNativeLib_win64_debug" AfterTargets="Build" 
           Condition="'$(Configuration)' == 'Debug' AND '$(OS)' == 'Windows_NT'">
     <ItemGroup>
@@ -49,5 +59,13 @@
           SkipUnchangedFiles="True"/>
   </Target>
 
+  <Target Name="CopyResources" AfterTargets="Build">
+    <ItemGroup>
+      <Resources Include="../Resources/Shaders/bin/*.spv"></Resources>
+    </ItemGroup>
+    <Copy SourceFiles="@(Resources)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="True"/>
+  </Target>
 
 </Project>

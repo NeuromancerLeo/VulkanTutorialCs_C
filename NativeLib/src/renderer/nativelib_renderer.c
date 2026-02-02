@@ -32,18 +32,6 @@ EX_API void rendererDrawFrame()
 }
 
 
-EX_API void rendererBeginFrame()
-{
-
-}
-
-
-EX_API void rendererEndFrame()
-{
-
-}
-
-
 EX_API void rendererRelease()
 {
     destroy_renderer_context(g_context);
