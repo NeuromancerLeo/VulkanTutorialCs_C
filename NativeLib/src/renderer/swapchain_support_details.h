@@ -53,14 +53,14 @@ VkPresentModeKHR get_optimal_prensent_mode(
     VkSurfaceKHR        surface
 );
 
-/// @brief 查询并获取交换范围（Swap Extent）.
+/// @brief 查询并获取 Surface 范围（Extent）.
 ///
-/// @param surface 给定的 Surface 句柄，用于查询交换范围大小
+/// @param surface 给定的 Surface 句柄，用于查询其范围大小
 /// @param window 给定的 GLFWwindow 句柄，用于获取窗口像素大小
-/// （当窗口管理器需要我们自行设置交换范围时）
+/// （当窗口管理器需要我们自行设置范围时）
 ///
-/// @return 创建交换链时所需要的交换范围
-VkExtent2D get_swap_exten(
+/// @return 创建交换链时所需要的 Surface 范围
+VkExtent2D get_surface_exten(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
     GLFWwindow*         window

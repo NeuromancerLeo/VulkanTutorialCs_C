@@ -72,8 +72,11 @@ void destroyLogicalDevice(VkDevice device);
 /// @param surface 给定 Surface 句柄
 /// @param physicalDevice 给定物理设备句柄
 /// @param device 给定设备句柄
+/// @param oldSwapchain 旧的交换链句柄
 /// @param pSwapchainImageCount 输出参数，交换链创建后其输出交换链图像句柄数组的大小
 /// @param ppSwapchainImages 输出参数，其输出一个指向交换链图像句柄数组的指针
+/// @param pSwapchainImageFormat 输出参数，其输出交换链图像的格式
+/// @param pSwapchainExtent 输出参数，其输出交换链图像的范围
 ///
 /// @return 返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回 `NULL`）
 VkSwapchainKHR createSwapchain(
@@ -81,6 +84,7 @@ VkSwapchainKHR createSwapchain(
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
     VkDevice            device,
+    VkSwapchainKHR      oldSwapchain,
     uint32_t*           pSwapchainImageCount,
     VkImage**           ppSwapchainImages,
     VkFormat*           pSwapchainImageFormat,
@@ -93,6 +97,8 @@ VkSwapchainKHR createSwapchain(
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param swapchain 要销毁的交换链句柄
 /// @param ppSwapchainImages 需同时传入在 createSwapchain() 中分配的交换链图像数组供销毁
+/// (可传入 `NULL`，这时函数不会帮你销毁交换链图像数组，需要你自己销毁，例如你在重建交换链，
+/// 需分开销毁交换链和其图像数组)
 void destroySwapchain(
     VkDevice        device, 
     VkSwapchainKHR  swapchain, 

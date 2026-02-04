@@ -14,7 +14,7 @@ EX_API GLFWwindow* initializeWindow(int width, int height, const char* title)
     }
         
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     return glfwCreateWindow(width, height, title, NULL, NULL);
 }
