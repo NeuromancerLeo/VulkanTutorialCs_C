@@ -4,6 +4,10 @@
 
 static RendererContext* g_context = NULL;
 
+static bool g_isFramebufferResized = false;
+
+static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int height);
+
 
 EX_API bool rendererInitialize(GLFWwindow* window)
 {
@@ -16,7 +20,21 @@ EX_API bool rendererInitialize(GLFWwindow* window)
         return false;
     }
 
+    // 这里设置一些 GLFW 回调函数
+    glfwSetFramebufferSizeCallback(window, frame_buffer_resize_call_back);
+
     return true;
+}
+
+static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int height)
+{
+    // 避免未使用参数警告
+    (void)window;
+
+    log_debug("%s(): width = %d, hight = %d", __func__, width, height);
+
+    // 设置该全局变量以表示 GLFW 的窗口帧缓冲区大小被更改
+    g_isFramebufferResized = true;
 }
 
 
@@ -28,7 +46,9 @@ EX_API bool rendererReady()
 
 EX_API void rendererDrawFrame()
 {
-    triangle_draw_frame(g_context);
+    triangle_draw_frame(g_context, g_isFramebufferResized);
+
+    g_isFramebufferResized = false;
 }
 
 

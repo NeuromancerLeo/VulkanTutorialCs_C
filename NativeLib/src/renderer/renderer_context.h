@@ -76,4 +76,9 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window);
 void destroy_renderer_context(RendererContext* pContext);
 
 
-void triangle_draw_frame(RendererContext* pContext);
+/// @brief Draw Frame 函数，请求交换链图像、检查是否重建交换链、录制命令缓冲区、提交渲染与呈现.
+///
+/// @param pContext 渲染器上下文句柄
+/// @param isFramebufferResized 窗口的帧缓冲区尺寸是否发生变更，该参数用于函数内部判断是否需重建
+/// 交换链
+void triangle_draw_frame(RendererContext* pContext, bool isFramebufferResized);

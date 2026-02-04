@@ -100,7 +100,7 @@ VkSurfaceFormatKHR get_optimal_surface_format(
     
     for (int i = 0; i < formatCount; i++)
     {
-        // 理想选择为 B8G8R8A8_SRGB 和 SRGB_NONLINEAR_KHR
+        // 理想选择为 B8G8R8A8_SRGB 搭配 SRGB_NONLINEAR_KHR
         if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB
             && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
@@ -108,7 +108,7 @@ VkSurfaceFormatKHR get_optimal_surface_format(
         }
     }
 
-    log_warn("物理设备不支持表面格式 B8G8R8A8_SRGB & SRGB_NONLINEAR_KHR，"
+    log_warn("物理设备不支持表面格式 B8G8R8A8_SRGB 搭配颜色空间 SRGB_NONLINEAR_KHR，"
         "将使用第一个可用的表面格式！");
 
     return surfaceFormats[0];
@@ -161,7 +161,7 @@ static inline int clamp_int(int value, int min, int max)
     return value;
 }
 
-VkExtent2D get_swap_exten(
+VkExtent2D get_surface_exten(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
     GLFWwindow*         window
@@ -176,7 +176,7 @@ VkExtent2D get_swap_exten(
     if (capabilities.currentExtent.width != UINT32_MAX)
         return capabilities.currentExtent;
 
-    // 若窗口管理器需要我们自行设置交换范围（ ^ 即高或宽是 uint32_t 的最大值）
+    // 若窗口管理器需要我们自行设置 surface 的范围（ ^ 即高或宽是 uint32_t 的最大值）
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);

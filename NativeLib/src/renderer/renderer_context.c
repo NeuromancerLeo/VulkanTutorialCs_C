@@ -11,12 +11,14 @@ static bool triangle_create_graphics_pipeline(
     const char*         fragmentSpvFilePath,
     const char*         fragmentSpvEntryPoint
 );
+static bool create_sync_objects(RendererContext* pContext);
+static void destroy_swapchain_related_resources(RendererContext* pContext);
 static bool triangle_record_command_buffer(
     RendererContext*    pContext,
     uint32_t            frameInFlightIndex,
     uint32_t            swapchainFramebufferIndex
 );
-static bool create_sync_objects(RendererContext* pContext);
+static void recreate_swapchain(RendererContext* pContext);
 
 
 RendererContext* new_renderer_context()
@@ -62,6 +64,7 @@ bool create_renderer_context(RendererContext* pContext, GLFWwindow* window)
                               pContext->surface,
                               pContext->physicalDevice,
                               pContext->device,
+                              VK_NULL_HANDLE,
                               &pContext->swapchainImageCount,
                               &pContext->swapchainImages,
                               &pContext->swapchainImageFormat,
@@ -519,14 +522,16 @@ void destroy_renderer_context(RendererContext* pContext)
 
     vkDeviceWaitIdle(pContext->device);
 
+    /**** 同步对象相关 ****/
+
     uint32_t i = 0;                                         // 销毁同步用对象
     for (; i < pContext->swapchainImageCount; i++)
     {
         if (pContext->renderFinishedSemaphores[i])
             destroySemaphore(pContext->device, pContext->renderFinishedSemaphores[i]);
     }
-    // 释放数组堆内存
-    free(pContext->renderFinishedSemaphores);
+
+    free(pContext->renderFinishedSemaphores);   // 释放数组堆内存
 
     for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -538,6 +543,7 @@ void destroy_renderer_context(RendererContext* pContext)
             destroyFence(pContext->device, pContext->frameInFlightFences[i]);
     }
 
+    /**** 管线对象相关 ****/
 
     if (pContext->triangle_pipeline)                          // 销毁三角形管线
         destroyPipeline(pContext->device, pContext->triangle_pipeline);
@@ -550,35 +556,17 @@ void destroy_renderer_context(RendererContext* pContext)
     if (pContext->triangle_fragmentShaderModule)
         destroyShaderModule(pContext->device, pContext->triangle_fragmentShaderModule);
 
-    if (pContext->triangle_swapchainFramebuffers)             // 销毁三角形绘制用帧缓冲区
-    {
-        for (int i = 0; i < pContext->swapchainImageCount; i++)   
-        {
-            if (pContext->triangle_swapchainFramebuffers[i])
-                destroyFramebuffer(pContext->device,
-                    pContext->triangle_swapchainFramebuffers[i]);
-        }
-
-        free(pContext->triangle_swapchainFramebuffers);       // 释放帧缓冲区数组
-        pContext->triangle_swapchainFramebuffers = NULL;      // 占用的堆内存
-    }
-
-    if (pContext->triangle_renderPass)                        // 销毁三角形绘制用渲染通道
-        destroyRenderPass(pContext->device, pContext->triangle_renderPass);
-
     if (pContext->triangle_commandPool)                       // 销毁三角形绘制用命令池
         destroyCommandPool(pContext->device, pContext->triangle_commandPool);
 
+    /**** 交换链对象相关 ****/
 
-    if (pContext->swapchainImageViews)                             // 销毁交换链图像视图
-        destroySwapchainImageViews(pContext->device,
-            pContext->swapchainImageCount,
-            &pContext->swapchainImageViews);
+    destroy_swapchain_related_resources(pContext);
 
-    if (pContext->swapchain != VK_NULL_HANDLE)                     // 销毁交换链及其图像
-        destroySwapchain(pContext->device,
-            pContext->swapchain,
-            &pContext->swapchainImages);
+    if (pContext->swapchain != VK_NULL_HANDLE)                     // 销毁交换链
+        destroySwapchain(pContext->device, pContext->swapchain, NULL);
+    
+    /**** Vk 基础对象相关 ****/
 
     if (pContext->device != VK_NULL_HANDLE)                        // 销毁 Vk 设备
         destroyLogicalDevice(pContext->device);
@@ -596,32 +584,80 @@ void destroy_renderer_context(RendererContext* pContext)
     return;
 }
 
+/// @brief 该函数会销毁：交换链图像帧缓冲区、渲染通道、交换链图像视图和交换链图像数组.
+static void destroy_swapchain_related_resources(RendererContext* pContext)
+{
+    if (pContext->triangle_swapchainFramebuffers)             // 销毁三角形绘制用帧缓冲区
+    {
+        for (int i = 0; i < pContext->swapchainImageCount; i++)   
+        {
+            if (pContext->triangle_swapchainFramebuffers[i])
+                destroyFramebuffer(pContext->device,
+                    pContext->triangle_swapchainFramebuffers[i]);
+        }
 
-void triangle_draw_frame(RendererContext* pContext)
+        free(pContext->triangle_swapchainFramebuffers);       // 释放帧缓冲区数组
+        pContext->triangle_swapchainFramebuffers = NULL;      // 占用的堆内存
+    }
+
+    if (pContext->triangle_renderPass)                        // 销毁三角形绘制用渲染通道
+        destroyRenderPass(pContext->device, pContext->triangle_renderPass);
+
+    if (pContext->swapchainImageViews)                        // 销毁交换链图像视图
+        destroySwapchainImageViews(pContext->device,
+            pContext->swapchainImageCount,
+            &pContext->swapchainImageViews);
+
+    if (pContext->swapchainImages)                            // 释放交换链图像数组堆内存
+    {
+        free(pContext->swapchainImages);
+        pContext->swapchainImages = NULL;
+    }
+}
+
+
+void triangle_draw_frame(RendererContext* pContext, bool isFramebufferResized)
 {
     static int frameInFlightIndex = 0;
 
-    // 0.等待帧栅栏
+    // 0.等待 In Flight 帧栅栏
     vkWaitForFences(pContext->device,
         1,
         &pContext->frameInFlightFences[frameInFlightIndex],
         VK_TRUE,
         UINT64_MAX);
 
-    // 等待完毕后重置帧栅栏
+    // 1.请求交换链图像（获取可用交换链图像索引）
+    uint32_t swapchainImageIndex = 0;
+    VkResult result = vkAcquireNextImageKHR(pContext->device,
+                         pContext->swapchain,
+                         UINT64_MAX,
+                         pContext->swapchainImageAvailableSemaphores[frameInFlightIndex],
+                         VK_NULL_HANDLE,
+                         &swapchainImageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)   // 过时的交换链与表面不再兼容，不再可用于渲染,
+    {                                         // 我们需要重建交换链；若为次优我们仍可对已请
+        recreate_swapchain(pContext);         // 求的图像继续渲染，等提交其至呈现后我们再重
+                                              // 建交换链.
+        return;     // 返回，直接跳过这一次的 draw_frame 调用
+    }
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+    {
+        log_error("%s()：请求交换链图像发生错误！Error Code(VkResult)：%d",
+            __func__, result);
+
+        return;     // 呃这样应该没问题？...
+    }
+
+    // 等待完毕并检查不需要交换链重建后重置 In Flight 帧栅栏
+    //（确保下文我们一定会使用该帧栅栏如调用 vkQueueSubmit() 时，才重置，不然的话如果在检查交换
+    // 链是否需要重建之前就重置帧栅栏，当遇到交换链需要重建时 draw_frame 会直接 return，
+    // 这样在该次 draw_frame 被重置的栅栏就没有任何提交函数会使用和触发它，而下一次等待它的
+    // draw_frame 就会永远等待它，造成死锁）
     vkResetFences(pContext->device,
         1,
         &pContext->frameInFlightFences[frameInFlightIndex]);
-    // 现在可以安全处理命令缓冲区了
-
-    // 1.获取可用交换链图像索引
-    uint32_t swapchainImageIndex = 0;
-    vkAcquireNextImageKHR(pContext->device,
-        pContext->swapchain,
-        UINT64_MAX,
-        pContext->swapchainImageAvailableSemaphores[frameInFlightIndex],
-        VK_NULL_HANDLE,
-        &swapchainImageIndex);
+    // 现在可以安全处理该帧的命令缓冲区了
 
     // 2.重置绘制三角形用的命令缓冲区
     vkResetCommandBuffer(pContext->triangle_commandBuffers[frameInFlightIndex], 0);
@@ -702,7 +738,15 @@ void triangle_draw_frame(RendererContext* pContext)
     // 其渲染和呈现操作均使用 swapchainImageIndex 来取信号量使用，一个交换链图像对应一个信号量，
     // 这样上个循环使用的信号量就不关下个循环的事，等到下一次使用同一个信号量时，消耗它的呈现操作
     // 必然是早就完成了的.
-    vkQueuePresentKHR(pContext->presentationQueue, &presentInfo);
+    result = vkQueuePresentKHR(pContext->presentationQueue, &presentInfo);
+    // 如果交换链过时或为次优，重建交换链
+    if (result == VK_ERROR_OUT_OF_DATE_KHR 
+        || result == VK_SUBOPTIMAL_KHR
+        || isFramebufferResized)
+        recreate_swapchain(pContext);
+    else if (result != VK_SUCCESS)
+        log_error("%s()：交换链图像的呈现发生错误！Error Code(VkResult)：%d",
+            __func__, result);
 
     frameInFlightIndex = (frameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -780,5 +824,59 @@ static bool triangle_record_command_buffer(
         return false;
 
     return true;
+}
+
+static void recreate_swapchain(RendererContext* pContext)
+{
+    // 首先获取 GLFW 窗口 Framebuffer 大小，检查若有分量等于 0 的则返回，不做交换链的重建
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(pContext->window, &width, &height);
+    if (width == 0 || height == 0)
+        return;
+
+    log_info("触发了交换链重建，oldSwapchain: %p, extent: %d x %d",
+        pContext->swapchain,
+        pContext->swapchainExtent.width,
+        pContext->swapchainExtent.height);
+
+    vkDeviceWaitIdle(pContext->device);
+
+    // 在重新创建交换链和相关对象前，先销毁旧交换链相关的对象
+    destroy_swapchain_related_resources(pContext);
+
+    // 引用为旧交换链
+    VkSwapchainKHR oldSwapchain = pContext->swapchain;
+
+    // 重新创建交换链
+    pContext->swapchain = createSwapchain(pContext->window,
+                              pContext->surface,
+                              pContext->physicalDevice,
+                              pContext->device,
+                              oldSwapchain,
+                              &pContext->swapchainImageCount,
+                              &pContext->swapchainImages,
+                              &pContext->swapchainImageFormat,
+                              &pContext->swapchainExtent);
+
+    // 销毁旧交换链
+    if (oldSwapchain != VK_NULL_HANDLE)
+        destroySwapchain(pContext->device, oldSwapchain, NULL);
+
+    // 重新创建交换链图像视图
+    pContext->swapchainImageViews = createSwapchainImageViews(pContext->device,
+                                        pContext->swapchainImageFormat,
+                                        pContext->swapchainImageCount,
+                                        pContext->swapchainImages);
+
+    // 重新创建给交换链图像用的渲染通道（因为图像格式可能变化）
+    triangle_create_render_pass(pContext);
+
+    // 重新创建交换链帧缓冲区（因为其直接引用交换链图像）
+    trigangle_create_swapchain_framebuffers(pContext);
+
+    log_info("交换链重建完毕，New Swapchain: %p, extent: %d x %d",
+        pContext->swapchain,
+        pContext->swapchainExtent.width,
+        pContext->swapchainExtent.height);
 }
 

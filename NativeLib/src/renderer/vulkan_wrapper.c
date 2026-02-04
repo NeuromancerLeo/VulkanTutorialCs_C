@@ -605,6 +605,7 @@ VkSwapchainKHR createSwapchain(
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
     VkDevice            device,
+    VkSwapchainKHR      oldSwapchain,
     uint32_t*           pSwapchainImageCount,   // 指向 uint32_t 变量的地址，用于输出
     VkImage**           ppSwapchainImages,      // 指向 VkImage 数组的地址，用于输出
     VkFormat*           pSwapchainImageFormat,  // 指向 VkFormat 变量的地址，用于输出
@@ -634,16 +635,16 @@ VkSwapchainKHR createSwapchain(
     SwapchainSupportDetails supportDetails = 
         query_swapchain_support_details(physicalDevice, surface);
 
-    // 2.选择理想的 surface 格式、交换范围、交换链呈现模式和 image 数
+    // 选择 surface 理想的格式、范围和呈现模式
     VkSurfaceFormatKHR surfaceFormat =
         get_optimal_surface_format(physicalDevice, surface);
 
-    VkExtent2D extent = get_swap_exten(physicalDevice, surface, window);
+    VkExtent2D extent = get_surface_exten(physicalDevice, surface, window);
 
     VkPresentModeKHR presentMode =
         get_optimal_prensent_mode(physicalDevice, surface);
 
-    // 避免驱动等待，设置为 min + 1 个
+    // 设置 image 数，避免驱动等待，设置为 min + 1 个
     uint32_t minImageCount = supportDetails.capabilities.minImageCount + 1;
     // 限制 image 的数量（0 是特殊值，表没有最大值限制）
     if (supportDetails.capabilities.maxImageCount > 0)
@@ -652,12 +653,12 @@ VkSwapchainKHR createSwapchain(
             supportDetails.capabilities.maxImageCount : minImageCount;
     }
 
-    // 3. 指定 VkSwapchainCreateInfoKHR
+    // 2. 指定 VkSwapchainCreateInfoKHR
     VkSwapchainCreateInfoKHR createInfo = {};
     createInfo.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface                  = surface;
 
-    createInfo.oldSwapchain             = VK_NULL_HANDLE;
+    createInfo.oldSwapchain             = oldSwapchain;
 
     createInfo.imageArrayLayers         = 1;
     createInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -671,7 +672,7 @@ VkSwapchainKHR createSwapchain(
     createInfo.compositeAlpha           = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.clipped                  = VK_TRUE;  // 启用窗口遮挡裁切
 
-    // 3.5.处理 ImageSharingMode
+    // 2.5.处理 ImageSharingMode
     QueueFamilyIndices queueFamilyIndices = 
         find_queue_families(physicalDevice, surface);
 
@@ -694,7 +695,7 @@ VkSwapchainKHR createSwapchain(
        createInfo.pQueueFamilyIndices   = pQueueFamilyIndices;
     }
 
-    // 4.创建交换链
+    // 3.创建交换链
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkResult result = vkCreateSwapchainKHR(device, &createInfo, NULL, &swapchain);
     if (result != VK_SUCCESS)
@@ -707,7 +708,7 @@ VkSwapchainKHR createSwapchain(
 
     free_swapchain_support_details(&supportDetails);
 
-    // 5.处理输出参数（交换链图像句柄数组和其大小、交换链图像格式和范围）
+    // 4.处理输出参数（交换链图像句柄数组和其大小、交换链图像格式和范围）
     uint32_t actualImageCount = 0;
     result = vkGetSwapchainImagesKHR(device, swapchain, &actualImageCount, NULL);
     if (result != VK_SUCCESS)
