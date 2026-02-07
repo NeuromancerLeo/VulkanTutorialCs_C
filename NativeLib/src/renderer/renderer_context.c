@@ -354,24 +354,41 @@ static bool triangle_create_graphics_pipeline(
 
 
     // 2.（配置顶点输入阶段）填写 VkPipelineVertexInputStateCreateInfo
-    // 对于绘制三角形，其顶点数据是在着色器里直接硬编码的, 所以这里不需要为加载顶点数据
-    // 填写任何描述结构体
+    // 顶点输入阶段需要设置两种结构体，分别是
+    // VkVertexInputBindingDescription 和
+    // VkVertexInputAttributeDescription
+
+    VkVertexInputBindingDescription vertexInputBindingDescription = 
+        get_vertex_data_input_binding_description(0);
+
+    uint32_t vertexInputAttributeCount = 0;
+    get_vertex_data_input_attribute_descriptions(0, &vertexInputAttributeCount, NULL);
+
+    VkVertexInputAttributeDescription 
+        vertexInputAttributeDescriptions[vertexInputAttributeCount];
+    get_vertex_data_input_attribute_descriptions(0,
+        &vertexInputAttributeCount,
+        vertexInputAttributeDescriptions);
+
     VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
     vertexInputStateInfo.sType = 
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateInfo.vertexBindingDescriptionCount   = 0; 
-    vertexInputStateInfo.pVertexBindingDescriptions      = NULL;
-    vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputStateInfo.pVertexAttributeDescriptions    = NULL;
+    vertexInputStateInfo.vertexBindingDescriptionCount   = 1; 
+    vertexInputStateInfo.pVertexBindingDescriptions      =
+        &vertexInputBindingDescription;
+    vertexInputStateInfo.vertexAttributeDescriptionCount = vertexInputAttributeCount;
+    vertexInputStateInfo.pVertexAttributeDescriptions    =
+        vertexInputAttributeDescriptions;
 
-    // 2.5（配置顶点输入阶段）填写 VkPipelineInputAssemblyStateCreateInfo
+
+    // 3.（配置输入装配阶段）填写 VkPipelineInputAssemblyStateCreateInfo
     VkPipelineInputAssemblyStateCreateInfo vertexInputAssemblyInfo = {};
     vertexInputAssemblyInfo.sType = 
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     vertexInputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
 
-    // 3.（配置光栅化阶段）填写 VkPipelineRasterizationStateCreateInfo
+    // 4.（配置光栅化阶段）填写 VkPipelineRasterizationStateCreateInfo
     VkPipelineRasterizationStateCreateInfo rasterizationStateInfo = {};
     rasterizationStateInfo.sType = 
         VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -385,7 +402,7 @@ static bool triangle_create_graphics_pipeline(
     rasterizationStateInfo.frontFace   = VK_FRONT_FACE_CLOCKWISE; 
 
 
-    // 4.（配置多重采样阶段，MSAA）填写 VkPipelineMultisampleStateCreateInfo
+    // 5.（配置多重采样阶段，MSAA）填写 VkPipelineMultisampleStateCreateInfo
     // 禁用
     VkPipelineMultisampleStateCreateInfo multisamplingStateInfo = {};
     multisamplingStateInfo.sType =
@@ -394,11 +411,11 @@ static bool triangle_create_graphics_pipeline(
     multisamplingStateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 
-    // 5.（配置深度和模板测试阶段）填写 VkPipelineDepthStencilStateCreateInfo
+    // 6.（配置深度和模板测试阶段）填写 VkPipelineDepthStencilStateCreateInfo
     // 不需要
 
 
-    // 6.（配置颜色混合阶段）填写 VkPipelineColorBlendAttachmentState，
+    // 7.（配置颜色混合阶段）填写 VkPipelineColorBlendAttachmentState，
     // 其包含针对帧缓冲区中单个颜色附件的颜色混合设置
     // 对于绘制三角形，我们的帧缓冲区仅含一个颜色附件（which is 交换链图像）
     // 所以这里填写一个即可，且不启用混合
@@ -410,7 +427,7 @@ static bool triangle_create_graphics_pipeline(
                                               | VK_COLOR_COMPONENT_B_BIT;
     colorBlendAttachmentState.blendEnable    = VK_FALSE;
 
-    // 6.5 填写 VkPipelineColorBlendStateCreateInfo, 其包含颜色混合的全局设置（覆盖性的）
+    // 7.5 填写 VkPipelineColorBlendStateCreateInfo, 其包含颜色混合的全局设置（覆盖性的）
     VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
     colorBlendStateInfo.sType =
         VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -421,7 +438,7 @@ static bool triangle_create_graphics_pipeline(
     colorBlendStateInfo.pAttachments    = &colorBlendAttachmentState;
 
 
-    // 7.（配置 Pipeline Layout）填写 VkPipelineLayoutCreateInfo
+    // 8.（配置 Pipeline Layout）填写 VkPipelineLayoutCreateInfo
     // Pipeline Layout 设置的是 VkDescriptorSetLayout 数组信息和推送常量，与着色器 uniform
     // 有关，现在我们不需要
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -429,7 +446,7 @@ static bool triangle_create_graphics_pipeline(
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts    = NULL;
 
-    // 7.5.创建管线布局
+    // 8.5.创建管线布局
     pContext->triangle_pipelineLayout = 
         createPipelineLayout(pContext->device, &pipelineLayoutInfo);
     if (pContext->triangle_pipelineLayout == VK_NULL_HANDLE)
@@ -452,7 +469,7 @@ static bool triangle_create_graphics_pipeline(
     createInfo.subpass             = 0;
 
 
-    // 8.创建图形管线
+    // 9.创建图形管线
     pContext->triangle_pipeline = createGraphicsPipeline(pContext->device, &createInfo);
     if (pContext->triangle_pipeline == VK_NULL_HANDLE)
         return false;

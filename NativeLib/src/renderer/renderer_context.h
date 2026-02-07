@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common/log.h"
+#include "renderer_data_structs.h"
 #include "vulkan_wrapper.h"
 
 #include <stdlib.h>
