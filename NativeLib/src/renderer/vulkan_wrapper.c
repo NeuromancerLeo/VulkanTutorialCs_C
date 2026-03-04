@@ -1289,6 +1289,67 @@ void destroyFence(VkDevice device, VkFence fence)
 }
 
 
+VkBuffer createBuffer(
+    const char*         label,
+    VkDevice            device,
+    VkBufferCreateInfo* pCreateInfo
+)
+{
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkResult result = vkCreateBuffer(device, pCreateInfo, NULL, &buffer);
+    if (result != VK_SUCCESS)
+    {
+        log_error("[label:%s] Failed to create a VkBuffer! Error Code(VkResult): %d",
+            label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("[label:%s] 创建了一个 VkBuffer.", label);
+
+    return buffer;
+}
+
+
+void destroyBuffer(VkDevice device, VkBuffer buffer)
+{
+    vkDestroyBuffer(device, buffer, NULL);
+
+    log_trace("调用了 vkDestroyBuffer!");
+}
+
+
+VkDeviceMemory allocateDeviceMemory(
+    const char*             label,
+    VkDevice                device,
+    VkMemoryAllocateInfo*   pAllocateInfo
+)
+{
+    VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+    VkResult result = vkAllocateMemory(device, pAllocateInfo, NULL, &deviceMemory);
+    if (result != VK_SUCCESS)
+    {
+        log_error("[label:%s] Failed to allocate a VkDeviceMemory! "
+            "Error Code(VkResult): %d",
+             label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("[label:%s] 创建了一个 VkDeviceMemory!", label);
+
+    return deviceMemory;
+}
+
+
+void freeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
+{
+    vkFreeMemory(device, deviceMemory, NULL);
+
+    log_trace("调用了 vkFreeMemory!");
+}
+
+
 void queueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,

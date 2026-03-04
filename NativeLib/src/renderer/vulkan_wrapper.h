@@ -300,6 +300,25 @@ VkFence createFence(
 void destroyFence(VkDevice device, VkFence fence);
 
 
+VkBuffer createBuffer(
+    const char*         label,
+    VkDevice            device,
+    VkBufferCreateInfo* pCreateInfo
+);
+
+
+void destroyBuffer(VkDevice device, VkBuffer buffer);
+
+
+VkDeviceMemory allocateDeviceMemory(
+    const char*             label,
+    VkDevice                device,
+    VkMemoryAllocateInfo*   pAllocateInfo
+);
+
+
+void freeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory);
+
 void queueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,

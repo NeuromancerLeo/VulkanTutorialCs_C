@@ -12,11 +12,11 @@ static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int hei
 EX_API bool rendererInitialize(GLFWwindow* window)
 {
     // 为渲染器上下文分配内存
-    g_context = new_renderer_context();
+    g_context = rctxNewRendererContext();
     // 构建渲染器上下文
-    if (!create_renderer_context(g_context, window))
+    if (!rctxCreateRendererContext(g_context, window))
     {
-        destroy_renderer_context(g_context);
+        rctxDestroyRendererContext(g_context);
         return false;
     }
 
@@ -40,13 +40,52 @@ static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int hei
 
 EX_API bool rendererReady()
 {
+    // 模拟 C# 端通过该 DLL 函数传入顶点数据
+    const VertexData verticesData[] = {       // interleaving vertex attributes
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},    // 最上方的点
+        {{0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},    // 右下角的点
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}},    // 左下角的点  // 顺时针为正面
+        {{0.0f,  0.6f}, {1.0f, 1.0f, 1.0f}},     // 偏下方的点
+        {{0.2f,  0.8f}, {0.0f, 0.0f, 1.0f}},    // 最下方偏右的点
+        {{-0.2f,  0.8f}, {0.0f, 1.0f, 0.0f}}     // 最下方偏左的点
+    };
+
+    if (!triangle_allocate_and_fill_vertex_buffer(g_context,
+             sizeof(verticesData),
+             verticesData))
+        return false;
+
     return true;
 }
 
 
 EX_API void rendererDrawFrame()
 {
-    triangle_draw_frame(g_context, g_isFramebufferResized);
+    // 模拟 C# 端通过该 DLL 函数传入顶点数据信息
+    DrawItemInfo drawItemInfo1 = {};
+    drawItemInfo1.vertexCount   = 3;
+    drawItemInfo1.instanceCount = 1;
+    drawItemInfo1.firstVertex   = 0;
+    drawItemInfo1.firstInstance = 0;
+
+    DrawItemInfo drawItemInfo2 = {};
+    drawItemInfo2.vertexCount   = 3;
+    drawItemInfo2.instanceCount = 1;
+    drawItemInfo2.firstVertex   = 3;
+    drawItemInfo2.firstInstance = 0;
+
+    DrawItemInfo drawItemInfos[] = {
+        drawItemInfo1, drawItemInfo2
+    };
+
+    MainRenderPassPipeline0DrawInfo mainRenderPassPipeline0DrawInfo = {};
+    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.vertexBuffer   = 
+        g_context->triangle_vertexBuffer;
+    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.offset         = 0;
+    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.drawItemCount  = 2;
+    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.pDrawItemInfos = drawItemInfos;
+
+    rctxDrawFrame(g_context, g_isFramebufferResized, &mainRenderPassPipeline0DrawInfo);
 
     g_isFramebufferResized = false;
 }
@@ -54,6 +93,6 @@ EX_API void rendererDrawFrame()
 
 EX_API void rendererRelease()
 {
-    destroy_renderer_context(g_context);
+    rctxDestroyRendererContext(g_context);
 }
 

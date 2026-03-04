@@ -10,7 +10,6 @@ typedef struct VertexData {
     Vector3 color;
 } VertexData;
 
-
 /// @brief 获取用 `VertexData` 数据结构作图形管线的顶点输入（顶点缓冲区）的数据单元时，创建管线
 /// 要用到的 VkVertexInputBindingDescription 信息结构体（用于描述图形管线的顶点缓冲区绑定）.
 ///
@@ -36,3 +35,24 @@ void get_vertex_data_input_attribute_descriptions(
     uint32_t*                           pAttributeCount,
     VkVertexInputAttributeDescription*  pAttributeDescriptions
 );
+
+typedef struct DrawItemInfo {
+    uint32_t vertexCount;
+    uint32_t instanceCount;
+    uint32_t firstVertex;
+    uint32_t firstInstance;
+} DrawItemInfo;
+
+typedef struct VertexBufferInfo {
+    VkBuffer        vertexBuffer;
+    uint32_t        offset;
+    uint32_t        drawItemCount;
+    DrawItemInfo*   pDrawItemInfos;
+} VertexBufferInfo;
+
+typedef struct MainRenderPassPipeline0DrawInfo {
+    VertexBufferInfo vertexBufferInfo;
+} MainRenderPassPipeline0DrawInfo;
+
+
+
