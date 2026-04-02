@@ -42,7 +42,7 @@ EX_API bool rendererReady()
 {
     // 模拟 C# 端通过该 DLL 函数传入顶点数据
     const VertexData verticesData[] = {       // interleaving vertex attributes
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},    // 最上方的点
+        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},    // 最上方的点
         {{0.5f,  0.5f}, {0.0f, 0.0f, 0.0f}},    // 右下角的点
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 0.0f}},    // 左下角的点  // 顺时针为正面
         {{0.0f,  0.6f}, {1.0f, 1.0f, 1.0f}},     // 偏下方的点
@@ -50,7 +50,13 @@ EX_API bool rendererReady()
         {{-0.2f,  0.8f}, {0.0f, 1.0f, 0.0f}}     // 最下方偏左的点
     };
 
-    if (!triangle_allocate_and_fill_vertex_buffer(g_context,
+    // if (!triangle_allocate_and_fill_vertex_buffer(g_context,
+    //          sizeof(verticesData),
+    //          verticesData))
+    //     return false;
+
+    // TODO: 返回 VkBuffer 资源句柄给 C# 端持有，让其管理负责资源的生命周期！
+    if (!trianle_vma_allocate_and_fill_vertex_buffer(g_context,
              sizeof(verticesData),
              verticesData))
         return false;
@@ -61,7 +67,16 @@ EX_API bool rendererReady()
 
 EX_API void rendererDrawFrame()
 {
-    // 模拟 C# 端通过该 DLL 函数传入顶点数据信息
+    // 准备绘制信息
+    MainRenderPassPipelinesDrawInfo mainRenderPassPipelinesDrawInfo = {};
+    // TODO: 在渲染器上下文中建立一个句柄表存储对应的 vertex buffer，然后 rctxDrawFrame 内部会根据从外界（C#端）传入的句柄或标识符来查找 VkBuffer 对象并使用.
+    
+    /**** 三角形管线部分 ****/
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.buffer   = 
+        g_context->triangle_vertexBuffer;    // TODO:（这里直接使用储存在 g_context 中的临时 VkBuffer 了）
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.offset         = 0;
+
+    // 模拟 C# 端通过该 DLL 函数传入的顶点数据信息
     DrawItemInfo drawItemInfo1 = {};
     drawItemInfo1.vertexCount   = 3;
     drawItemInfo1.instanceCount = 1;
@@ -78,14 +93,11 @@ EX_API void rendererDrawFrame()
         drawItemInfo1, drawItemInfo2
     };
 
-    MainRenderPassPipeline0DrawInfo mainRenderPassPipeline0DrawInfo = {};
-    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.vertexBuffer   = 
-        g_context->triangle_vertexBuffer;
-    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.offset         = 0;
-    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.drawItemCount  = 2;
-    mainRenderPassPipeline0DrawInfo.vertexBufferInfo.pDrawItemInfos = drawItemInfos;
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.drawItemCount  = 2;
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.pDrawItemInfos = 
+        drawItemInfos;
 
-    rctxDrawFrame(g_context, g_isFramebufferResized, &mainRenderPassPipeline0DrawInfo);
+    rctxDrawFrame(g_context, g_isFramebufferResized, &mainRenderPassPipelinesDrawInfo);
 
     g_isFramebufferResized = false;
 }

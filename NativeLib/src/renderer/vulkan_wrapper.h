@@ -3,6 +3,7 @@
 #include "../common/log.h"
 #include "queue_family_indices.h"
 #include "swapchain_support_details.h"
+#include "vk_mem_alloc.h"
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -50,20 +51,39 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
 
 /// @brief 根据给定物理设备创建逻辑设备.
 ///
-/// @param graphicsQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（graphics）
-/// @param presentationQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（presentation）
+/// @param pGraphicsQueue 输出参数，函数执行成功后，输出一个有效的 VkQueue 句柄（graphics）
+/// @param pPresentationQueue 输出参数，函数执行成功后，输出一个有效的 VkQueue 句柄
+///（presentation）
 ///
 /// @return 返回新创建的 VkDevice 句柄（当发生错误时返回 `NULL`）
 VkDevice createLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    VkQueue*            graphicsQueue,
-    VkQueue*            presentationQueue
+    VkQueue*            pGraphicsQueue,
+    VkQueue*            pPresentationQueue
 );
 
 
 /// @brief 销毁给定的 VkDevice.
 void destroyLogicalDevice(VkDevice device);
+
+
+/// @brief 创建 VMA 分配器.
+///
+/// @param instance 调用该函数需要传入一个有效的 VkInstance 句柄
+/// @param physicalDevice 调用该函数需要传入一个有效的 VkPhysicalDevice 句柄
+/// @param device 调用该函数需要传入一个有效的 VkDevice 句柄
+///
+/// @return 返回新创建的 VmaAllocator 句柄（当发生错误时返回 `NULL`）
+VmaAllocator createVmaAllocator(
+    VkInstance          instance,
+    VkPhysicalDevice    physicalDevice,
+    VkDevice            device
+);
+
+
+/// @brief 销毁给定的 VmaAllocator（该函数调用必须在 VkDevice 被销毁之前）. 
+void destroyVmaAllocator(VmaAllocator allocator);
 
 
 /// @brief 根据给定窗口句柄和设备创建交换链.

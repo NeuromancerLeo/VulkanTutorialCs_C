@@ -3,6 +3,7 @@
 #include "../common/log.h"
 #include "renderer_data_structs.h"
 #include "vulkan_wrapper.h"
+#include "vk_mem_alloc.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,24 @@ typedef struct RctxPipeline {
     VkPipelineLayout    pipelineLayout;
 } RctxPipeline;
 
+typedef struct RctxMainRenderPassPipelines {
+    RctxPipeline        triangle; // 属第 0 个 subpass，用于三角形绘制
+    
+} RctxMainRenderPassPipelines;
+
+typedef struct RctxPipelineCreateInfo {
+    const char*         vertexSpvFilePath;
+    const char*         vertexSpvEntryPoint;
+    const char*         fragmentSpvFilePath;
+    const char*         fragmentSpvEntryPoint;
+} RctxPipelineCreateInfo;
+
+typedef struct RctxMainRenderPassPipelinesCreateInfo {
+    RctxPipelineCreateInfo    triangle;
+    // RctxPipelineCreateInfo    skybox
+    // ......
+} RctxMainRenderPassPipelinesCreateInfo;
+
 /// @brief 渲染器上下文结构体，使用 rctxNewRendererContext 获取一个该结构体句柄.
 typedef struct RendererContext {
     GLFWwindow*         window;
@@ -33,6 +52,8 @@ typedef struct RendererContext {
     VkQueue             graphicsQueue;
     VkQueue             presentationQueue;
 
+    VmaAllocator        vmaAllocator;
+
     VkSwapchainKHR      swapchain;
     uint32_t            swapchainImageCount;
     VkImage*            swapchainImages;
@@ -40,16 +61,12 @@ typedef struct RendererContext {
     VkExtent2D          swapchainExtent;
     VkImageView*        swapchainImageViews;
 
-    VkCommandPool       mainThreadCommandPool;   // TODO: mainThreadCommandPool
-    VkCommandBuffer     mainCommandBuffers[MAX_FRAMES_IN_FLIGHT];  // TODO: mainCommandBuffers
+    VkCommandPool       mainThreadCommandPool;
+    VkCommandBuffer     mainCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
-    VkRenderPass        mainRenderPass;    // TODO: mainRenderPass
-    VkFramebuffer*      swapchainFramebuffers; // 堆分配的数组，需自行释放 // TODO: swapchainFramebuffers
-    RctxPipeline        mainRenderPassPipeline0;
-    // VkShaderModule      triangle_vertexShaderModule;
-    // VkShaderModule      triangle_fragmentShaderModule;
-    // VkPipelineLayout    triangle_pipelineLayout;
-    // VkPipeline          triangle_pipeline;  // TODO: mainRenderPassPipeline0
+    VkRenderPass                    mainRenderPass;
+    VkFramebuffer*                  swapchainFramebuffers; // 堆分配的数组，需自行释放
+    RctxMainRenderPassPipelines     mainRenderPassPipelines;
 
     // 信号量：意味着一个交换链图像已被获取，其可安全渲染
     VkSemaphore         swapchainImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -61,6 +78,7 @@ typedef struct RendererContext {
     // 仅临时
     VkBuffer            triangle_vertexBuffer;
     VkDeviceMemory      triangle_vertexBufferMemory;
+    VmaAllocation       triangle_vertexBufferAllocation;
 } RendererContext;
 
 
@@ -88,7 +106,14 @@ void rctxDestroyRendererContext(RendererContext* pContext);
 bool triangle_allocate_and_fill_vertex_buffer(
     RendererContext*    pContext,
     size_t              dataSize,
-    const VertexData*   pVertexData
+    const VertexData*   pVerticesData
+);
+
+
+bool trianle_vma_allocate_and_fill_vertex_buffer(
+    RendererContext*    pContext,
+    size_t              dataSize,
+    const VertexData*   pVerticesData
 );
 
 
@@ -97,8 +122,9 @@ bool triangle_allocate_and_fill_vertex_buffer(
 /// @param pContext 渲染器上下文句柄
 /// @param isFramebufferResized 窗口的帧缓冲区尺寸是否发生变更，该参数用于函数内部判断是否需重建
 /// 交换链
+/// @param pMainRenderPassPipelinesDrawInfo 主渲染通道所有管线的对应绘制信息
 void rctxDrawFrame(
     RendererContext*                    pContext,
     bool                                isFramebufferResized,
-    MainRenderPassPipeline0DrawInfo*    pMainRenderPassPipeline0DrawInfo
+    MainRenderPassPipelinesDrawInfo*    pMainRenderPassPipelinesDrawInfo
 );

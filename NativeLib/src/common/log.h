@@ -18,6 +18,10 @@
 #define LOG_VERSION "0.1.0"
 #define LOG_USE_COLOR
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   va_list ap;
   const char *fmt;
@@ -48,5 +52,9 @@ int log_add_callback(log_LogFn fn, void *udata, int level);
 int log_add_fp(FILE *fp, int level);
 
 void log_log(int level, const char *file, int line, const char *fmt, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

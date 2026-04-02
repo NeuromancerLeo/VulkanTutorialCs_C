@@ -1,3 +1,5 @@
+/// 这里声明着与渲染器进行互操作所需的所有数据结构
+
 #pragma once
 
 #include "../common/log.h"
@@ -36,6 +38,7 @@ void get_vertex_data_input_attribute_descriptions(
     VkVertexInputAttributeDescription*  pAttributeDescriptions
 );
 
+/// @brief 对应 vkCmdDraw() 的参数
 typedef struct DrawItemInfo {
     uint32_t vertexCount;
     uint32_t instanceCount;
@@ -43,16 +46,30 @@ typedef struct DrawItemInfo {
     uint32_t firstInstance;
 } DrawItemInfo;
 
-typedef struct VertexBufferInfo {
-    VkBuffer        vertexBuffer;
-    uint32_t        offset;
+/// 在这里要说明的是，因为管线本身就是高度需求定制化的，
+/// 所以以下的 VertexBufferInfo、PipelineDrawInfo 和 PipelinesDrawInfo 等结构体
+/// 它们都不得不含有指名其所属渲染通道和对应渲染管线的前缀；
+/// 定制化体现在它们所含的字段成员数量等，比如 VkBuffer 数、VkImage 数都不尽相同.
+
+/**** MainRenderPass, Triangle 管线 ****/
+
+/// @brief 对应 vkCmdBindVertexBuffers() 的参数
+typedef struct MainRenderPassTrianglePipelineVertexBufferInfo {
+    // TODO: Buffer 属于用户申请的资源，需用户自己管理其生命周期，所以直接让C#端持有句柄传入即可
+    VkBuffer        buffer;
+    uint64_t        offset;
     uint32_t        drawItemCount;
     DrawItemInfo*   pDrawItemInfos;
-} VertexBufferInfo;
+} MainRenderPassTrianglePipelineVertexBufferInfo;
 
-typedef struct MainRenderPassPipeline0DrawInfo {
-    VertexBufferInfo vertexBufferInfo;
-} MainRenderPassPipeline0DrawInfo;
+typedef struct MainRenderPassTrianglePipelineDrawInfo {
+    MainRenderPassTrianglePipelineVertexBufferInfo vertexBufferInfo;
+} MainRenderPassTrianglePipelineDrawInfo;
+
+typedef struct MainRenderPassPipelinesDrawInfo {
+    MainRenderPassTrianglePipelineDrawInfo triangle;
+    
+} MainRenderPassPipelinesDrawInfo;
 
 
 

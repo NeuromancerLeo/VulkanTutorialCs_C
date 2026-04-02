@@ -472,10 +472,17 @@ static void get_driver_version_string(
 VkDevice createLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    VkQueue*            graphicsQueue,
-    VkQueue*            presentationQueue
+    VkQueue*            pGraphicsQueue,
+    VkQueue*            pPresentationQueue
 )
 {
+    if (pGraphicsQueue == NULL || pPresentationQueue == NULL)
+    {
+        log_error("%s(): 函数参数错误！输出参数不能传入 NULL 地址！", __func__);
+
+        return VK_NULL_HANDLE;
+    }
+
     int queueFamilyIndex = -1;
     bool useSingleQueue = 
         has_queue_family_supports_both_graphics_and_presentation(physicalDevice,
@@ -502,37 +509,37 @@ VkDevice createLogicalDevice(
     if (useSingleQueue)
     {
         // 1.指定创建队列要用到的 VkDeviceQueueCreateInfo
-        queueCreateInfo.sType               = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex    = queueFamilyIndex;
-        queueCreateInfo.queueCount          = 1;
-        queueCreateInfo.pQueuePriorities    = &queuePriorities;
+        queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+        queueCreateInfo.queueCount       = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriorities;
 
         // 2.指定 VkPhysicalDeviceFeatures
         // 默认
 
         // 3.指定 VkDeviceCreatInfo
-        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos        = &queueCreateInfo;
-        createInfo.queueCreateInfoCount     = 1;
-        createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
-        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
+        createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos       = &queueCreateInfo;
+        createInfo.queueCreateInfoCount    = 1;
+        createInfo.pEnabledFeatures        = &deviceFeatures;
+        createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+        createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
     }
     else
     {
         // (GRAPHICS)
-        queueCreateInfoG.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfoG.queueFamilyIndex   = queueFamilyIndices.graphicsSupport;
-        queueCreateInfoG.queueCount         = 1;
+        queueCreateInfoG.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfoG.queueFamilyIndex = queueFamilyIndices.graphicsSupport;
+        queueCreateInfoG.queueCount       = 1;
         float queuePrioritiesG = 1.0f;
-        queueCreateInfoG.pQueuePriorities   = &queuePrioritiesG;
+        queueCreateInfoG.pQueuePriorities = &queuePrioritiesG;
 
         // (Presentation)
-        queueCreateInfoP.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfoP.queueFamilyIndex   = queueFamilyIndices.presentationSupport;
-        queueCreateInfoP.queueCount         = 1;
+        queueCreateInfoP.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfoP.queueFamilyIndex = queueFamilyIndices.presentationSupport;
+        queueCreateInfoP.queueCount       = 1;
         float queuePrioritiesP = 1.0f;
-        queueCreateInfoP.pQueuePriorities   = &queuePrioritiesP;
+        queueCreateInfoP.pQueuePriorities = &queuePrioritiesP;
 
         queueCreateInfos[0] = queueCreateInfoG;
         queueCreateInfos[1] = queueCreateInfoP;
@@ -540,12 +547,12 @@ VkDevice createLogicalDevice(
         // VkPhysicalDeviceFeatures
         // 默认
 
-        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos        = queueCreateInfos;
-        createInfo.queueCreateInfoCount     = 2;
-        createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
-        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
+        createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos       = queueCreateInfos;
+        createInfo.queueCreateInfoCount    = 2;
+        createInfo.pEnabledFeatures        = &deviceFeatures;
+        createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+        createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
     }
 
     // 4.创建逻辑设备
@@ -555,6 +562,9 @@ VkDevice createLogicalDevice(
     {
         log_error("Failed to create a VkDevice! Error Code(VkResult): %d", result);
 
+        *pGraphicsQueue = VK_NULL_HANDLE;
+        *pPresentationQueue = VK_NULL_HANDLE;
+
         return VK_NULL_HANDLE;
     }
 
@@ -563,19 +573,19 @@ VkDevice createLogicalDevice(
     // 5.out 参数形式返回创建好的 VkQueue
     if (useSingleQueue)
     {
-        vkGetDeviceQueue(device, queueFamilyIndex, 0, graphicsQueue);
-        vkGetDeviceQueue(device, queueFamilyIndex, 0, presentationQueue);
+        vkGetDeviceQueue(device, queueFamilyIndex, 0, pGraphicsQueue);
+        vkGetDeviceQueue(device, queueFamilyIndex, 0, pPresentationQueue);
     }
     else
     {
         vkGetDeviceQueue(device, 
             queueFamilyIndices.graphicsSupport, 
             0, 
-            graphicsQueue);
+            pGraphicsQueue);
         vkGetDeviceQueue(device, 
             queueFamilyIndices.presentationSupport, 
             0, 
-            presentationQueue);
+            pPresentationQueue);
     }
 
     log_info("获取了一个 VkQueue (for graphics).");
@@ -597,6 +607,42 @@ void destroyLogicalDevice(VkDevice device)
     vkDestroyDevice(device, NULL);
 
     log_trace("调用了 vkDestroyDevice！");
+}
+
+
+VmaAllocator createVmaAllocator(
+    VkInstance          instance,
+    VkPhysicalDevice    physicalDevice,
+    VkDevice            device
+)
+{
+    VmaAllocator allocator = VK_NULL_HANDLE;
+
+    VmaAllocatorCreateInfo createInfo = {};
+    createInfo.instance         = instance;
+    createInfo.physicalDevice   = physicalDevice;
+    createInfo.device           = device;
+    createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+    VkResult result = vmaCreateAllocator(&createInfo, &allocator);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VmaAllocator! Error Code(VkResult): %d", result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_info("成功创建了一个 VmaAllocator！");
+
+    return allocator;
+}
+
+
+void destroyVmaAllocator(VmaAllocator allocator)
+{
+    vmaDestroyAllocator(allocator);
+
+    log_trace("调用了 vmaDestroyAllocator！");
 }
 
 

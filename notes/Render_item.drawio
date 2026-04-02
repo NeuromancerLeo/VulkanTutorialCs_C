@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="SRS9tBvet0UNMAy_7AHV" name="Page-1">
-        <mxGraphModel dx="1086" dy="787" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1459" dy="1655" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -18,32 +18,32 @@
                 <mxCell id="6" value="rctx::mainRenderPass" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="420" y="190" width="150" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="// 最终渲染目标为交换链图像" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="420" y="250" width="180" height="30" as="geometry"/>
+                <mxCell id="7" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;最终渲染目标一般为交换链图像，毕竟要呈现&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="270" width="190" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="8" value="&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;// 一个主命令缓冲区录制所有 RenderPass，绘制所有要绘制的渲染项&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: rgb(0, 0, 0);&quot;&gt;// 然后提交给显卡&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="10" y="220" width="380" height="40" as="geometry"/>
+                <mxCell id="8" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;font&gt;一个主命令缓冲区录制所有 RenderPass，绘制所有要绘制的渲染项，&lt;/font&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;然后提交给显卡&lt;/span&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="220" width="270" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" value="" style="endArrow=none;dashed=1;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;" parent="1" source="6" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="430" y="190" as="sourcePoint"/>
-                        <mxPoint x="420" y="40" as="targetPoint"/>
+                        <mxPoint x="420" y="-10" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="11" value="subpass:UI" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="420" y="130" width="110" height="30" as="geometry"/>
+                <mxCell id="11" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;item using&amp;nbsp;&lt;/span&gt;PBR" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="80" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="12" value="subpass:Shadow" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="420" y="100" width="110" height="30" as="geometry"/>
+                <mxCell id="12" value="shadow" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="50" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="13" value="subpass:SkyBox" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="420" y="70" width="110" height="30" as="geometry"/>
+                <mxCell id="13" value="skyb&lt;span style=&quot;color: rgb(63, 63, 63); background-color: transparent;&quot;&gt;ox&lt;/span&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="475" y="20" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="14" value="subpass:......" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="14" value="subpass1:......" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="420" y="160" width="110" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="15" value="// RenderPass 用于定义程序在宏观上的 “&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;渲染流程&lt;/span&gt;”（应尝试使用多个subpass而不是多个renderpass）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="580" y="170" width="200" height="60" as="geometry"/>
+                <mxCell id="15" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;RenderPass 用于定义程序在宏观上的 “&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;渲染流程&lt;/span&gt;”（应尝试使用多个subpass而不是多个renderpass），它负责处理针对渲染目标（即 Framebuffer 的各种附件）的流程结构，用于描述组织一次完整的对附件的操作序列&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="581.05" y="110" width="200" height="100" as="geometry"/>
                 </mxCell>
                 <mxCell id="18" value="rctx::swapchainFramebuffers" style="html=1;whiteSpace=wrap;" parent="1" vertex="1">
                     <mxGeometry x="420" y="300" width="180" height="50" as="geometry"/>
@@ -57,7 +57,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="20" value="rctx::mainRenderPassPipeline0.pipeline" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="20" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;trianglePipeline&lt;/span&gt;.pipeline" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="800" y="110" width="230" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="21" value="" style="endArrow=none;dashed=1;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;" parent="1" target="20" edge="1">
@@ -107,7 +107,7 @@
                 <mxCell id="33" value="Pipeline Layout" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="800" y="420" width="150" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="34" target="87">
+                <mxCell id="86" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="34" target="87" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1030" y="480" as="targetPoint"/>
                     </mxGeometry>
@@ -115,17 +115,17 @@
                 <mxCell id="34" value="RenderPass and subpass" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="800" y="450" width="150" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="35" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;rctx::mainRenderPassPipeline0.&lt;/span&gt;vertexShaderModule" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="35" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;trianglePipeline&lt;/span&gt;.&lt;/span&gt;vertexShaderModule" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1030" y="140" width="400" height="25" as="geometry"/>
                 </mxCell>
-                <mxCell id="36" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;rctx::mainRenderPassPipeline0&lt;/span&gt;.fragmentShaderModule" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="36" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;trianglePipeline&lt;/span&gt;.fragmentShaderModule" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1030" y="165" width="400" height="25" as="geometry"/>
                 </mxCell>
-                <mxCell id="38" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;rctx::mainRenderPassPipeline0&lt;/span&gt;.pipelineLayout" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="38" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;trianglePipeline&lt;/span&gt;.pipelineLayout" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1030" y="420" width="280" height="25" as="geometry"/>
                 </mxCell>
-                <mxCell id="40" value="subpass:triangle" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="420" y="40" width="110" height="30" as="geometry"/>
+                <mxCell id="40" value="subpass0:triangle" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="-10" width="110" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="41" value="" style="curved=1;endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="40" target="52" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -144,7 +144,7 @@
                 <mxCell id="75" value="VertexBufferInfo" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" parent="47" vertex="1">
                     <mxGeometry y="30" width="340" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="52" value="rctx::mainRenderPassPipeline0" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="52" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;trianglePipeline&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="800" y="50" width="230" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="54" value="renderer_data_structs::VertexData.get_vertex_data_input_binding_description()" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -199,8 +199,134 @@
                 <mxCell id="85" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" parent="1" source="66" target="68" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="87" value="rctx::mainRenderPass 的 triangle subpass" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="87" value="rctx::mainRenderPass 的 subpass0" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1030" y="455" width="280" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="89" value="Material" style="html=1;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="651.05" y="680" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="91" value="" style="endArrow=classic;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="92" target="89">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="660.05" y="810" as="sourcePoint"/>
+                        <mxPoint x="710.05" y="760" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="92" value="PBR" style="html=1;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="820" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="93" value="Unlit" style="html=1;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="651.05" y="820" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="94" value="" style="endArrow=classic;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="93" target="89">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="655.05" y="830" as="sourcePoint"/>
+                        <mxPoint x="716.05" y="740" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="95" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;按着色模型分类&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="780.05" y="750" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="96" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;各自包含对应其着色模型所需的参数数据&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="710.05" y="990" width="230" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="97" value="Skybox" style="html=1;whiteSpace=wrap;" vertex="1" parent="1">
+                    <mxGeometry x="781.05" y="820" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="98" value="" style="endArrow=classic;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="97" target="89">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="716.05" y="830" as="sourcePoint"/>
+                        <mxPoint x="716.05" y="740" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="100" value="" style="endArrow=none;dashed=1;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" target="92">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="520" y="1140" as="sourcePoint"/>
+                        <mxPoint x="520" y="890" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="101" value="Mesh" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="870" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="102" value="Albedo Map" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="900" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="103" value="Normal&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Map&lt;/span&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="930" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="104" value="Metallic&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Map&lt;/span&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="960" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="105" value="Specular&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Map&lt;/span&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="990" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="106" value="AO&amp;nbsp;&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Map&lt;/span&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="1020" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="107" value="......" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="521.05" y="1050" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="108" value="Mesh" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="651.05" y="870" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="109" value="" style="endArrow=none;dashed=1;html=1;entryX=0.006;entryY=-0.096;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="108">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="652.05" y="1140" as="sourcePoint"/>
+                        <mxPoint x="652.0999999999999" y="890" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="110" value="" style="endArrow=none;dashed=1;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" target="97">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="780" y="1141.5" as="sourcePoint"/>
+                        <mxPoint x="780" y="868.5" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="111" value="Cube Map" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="782.05" y="870" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="112" value="Color Map" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="652.05" y="900" width="109" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="114" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;b&gt;材质（Material）&lt;/b&gt;可作为纯数据资源，其&lt;b&gt;类别&lt;/b&gt;决定了属于哪种&lt;font style=&quot;color: rgb(0, 127, 255);&quot;&gt;着色模型&lt;/font&gt;（也就是按着色模型分类，着色模型所定义的参数集就抽象为“材质 Material”对象），然后渲染器渲染使用该类材质的物体时，就会使用对应的管线（VkPipeline）并读取材质具体参数进行渲染。而像 Mesh（VkBuffer）、Texture（VkImage） 这种抽象本质只不过就是根据着色模型渲染时所需要的数据而已，存在于材质中。Shader（VkShaderModule）是着色模型的一部分，为着色模型算法的实现处。一个着色模型，就对应 Vulkan 里一套设计完善的 VkPipeline。PBR、Unlit、UI、Skybox 它们都是着色模型，Unity 中就是这样，它们作为材质的“类别”为用户提供选择，不同类别材质有其独特的需求参数。&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="910.05" y="750" width="360" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="116" value="&lt;font style=&quot;font-size: 13px;&quot; face=&quot;Xiaolai Regular&quot;&gt;RenderPass 负责描述附件集合，每个附件在其子流程（subpass）中的参与、加载\存储操作、布局转换等，以及子流程之间的依赖关系。简单来说就是“描述所用到的附件和其如何在各个 subpass 中被使用”&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="580.05" y="-70" width="200" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="117" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;span style=&quot;font-size: 13px;&quot;&gt;而 Pipeline 则为&amp;nbsp;&lt;/span&gt;&lt;/font&gt;&lt;span style=&quot;color: rgb(63, 63, 63); font-family: &amp;quot;Xiaolai Regular&amp;quot;; font-size: 13px;&quot;&gt;subpass 所用，&lt;/span&gt;&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;span style=&quot;font-size: 13px;&quot;&gt;定义了该 subpass 的&amp;nbsp;&lt;b&gt;具体渲染方法&lt;/b&gt;&lt;/span&gt;&lt;/font&gt;&lt;div&gt;&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;span style=&quot;font-size: 13px;&quot;&gt;（一般来说一个 subpass 录制时会绑多个 pipeline 进行渲染，而不是一个 pipeline 就要求一个新的 subpass 专门录制）&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="800" y="-20" width="410" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="118" value="UI" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="475" y="110" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="119" value="......" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="475" y="140" width="110" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="120" value="rctx::mainRenderPassPipelines" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-340" width="230" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="121" value="" style="endArrow=none;dashed=1;html=1;entryX=0;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" target="120">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="1070" y="-80" as="sourcePoint"/>
+                        <mxPoint x="1059.9999999999998" y="-260" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="122" value="trianglePipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-280" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="123" value="skyboxPipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-250" width="99.95" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="124" value="shadowPipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-220" width="99.95" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="125" value="PBRPipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.69" y="-190" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="126" value="UIPipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-160" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="127" value="......Pipeline" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="1070.74" y="-130" width="100" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
