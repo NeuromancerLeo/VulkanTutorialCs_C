@@ -49,33 +49,33 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
 
     pContext->window = window;                          // 保存窗口句柄
 
-    pContext->instance = createInstance();              // 创建 Vk 实例
+    pContext->instance = vwrpCreateInstance();          // 创建 Vk 实例
     if (pContext->instance == VK_NULL_HANDLE)
         return false;
 
-    pContext->surface = createSurface(pContext->instance, pContext->window); 
+    pContext->surface = vwrpCreateSurface(pContext->instance, pContext->window); 
     if (pContext->surface == VK_NULL_HANDLE)            // 创建窗口表面 
         return false;
     
-    pContext->physicalDevice = pickPhysicalDevice(pContext->instance, pContext->surface);
+    pContext->physicalDevice = vwrpPickPhysicalDevice(pContext->instance, pContext->surface);
     if (pContext->physicalDevice == VK_NULL_HANDLE)     // 选取物理设备
         return false;
     
-    pContext->device = createLogicalDevice(pContext->physicalDevice,  // 创建 Vk 设备
-                           pContext->surface,
+    pContext->device = vwrpCreateLogicalDevice(pContext->physicalDevice,
+                           pContext->surface,                       // 创建 Vk 设备
                            &pContext->graphicsQueue,
                            &pContext->presentationQueue);
     if (pContext->device == VK_NULL_HANDLE)
         return false;
 
-    pContext->vmaAllocator = createVmaAllocator(pContext->instance,   // 创建 VMA 分配器
-                                 pContext->physicalDevice,
+    pContext->vmaAllocator = vwrpCreateVmaAllocator(pContext->instance,
+                                 pContext->physicalDevice,          // 创建 VMA 分配器
                                  pContext->device);
     if (pContext->vmaAllocator == VK_NULL_HANDLE)
         return false;
 
-    pContext->swapchain = createSwapchain(pContext->window,    // 为窗口（表面）创建交换链
-                              pContext->surface,
+    pContext->swapchain = vwrpCreateSwapchain(pContext->window,
+                              pContext->surface,        // 为窗口（表面）创建交换链
                               pContext->physicalDevice,
                               pContext->device,
                               VK_NULL_HANDLE,
@@ -86,7 +86,7 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
     if (pContext->swapchain == VK_NULL_HANDLE)
         return false;
 
-    pContext->swapchainImageViews = createSwapchainImageViews(pContext->device,
+    pContext->swapchainImageViews = vwrpCreateSwapchainImageViews(pContext->device,
                                         pContext->swapchainImageFormat,       
                                         pContext->swapchainImageCount,    // 创建交换链的
                                         pContext->swapchainImages);       // 图像视图
@@ -153,7 +153,8 @@ static bool create_main_thread_command_pool(RendererContext* pContext)
     else
         createInfo.queueFamilyIndex = queueFamilyIndices.graphicsSupport;
 
-    pContext->mainThreadCommandPool = createCommandPool(pContext->device, &createInfo);
+    pContext->mainThreadCommandPool = vwrpCreateCommandPool(pContext->device,
+                                          &createInfo);
     if (pContext->mainThreadCommandPool == VK_NULL_HANDLE)
         return false;
 
@@ -168,7 +169,7 @@ static bool allocate_main_command_buffers(RendererContext* pContext)
     allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocateInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-    allocateCommandBuffers(pContext->device,
+    vwrpAllocateCommandBuffers(pContext->device,
         &allocateInfo,
         pContext->mainCommandBuffers);
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -262,7 +263,7 @@ static bool create_main_render_pass(RendererContext* pContext)
     createInfo.dependencyCount = 1;    // 应用 VkSubpassDependency 数组
     createInfo.pDependencies   = &subpass0Dependency;
 
-    pContext->mainRenderPass = createRenderPass(pContext->device, &createInfo);
+    pContext->mainRenderPass = vwrpCreateRenderPass(pContext->device, &createInfo);
     if (pContext->mainRenderPass == VK_NULL_HANDLE)
         return false;
 
@@ -298,7 +299,7 @@ static bool create_swapchain_framebuffers(RendererContext* pContext)
         createInfo.layers          = 1;
         
         pContext->swapchainFramebuffers[i] =
-            createFramebuffer(pContext->device, &createInfo);
+            vwrpCreateFramebuffer(pContext->device, &createInfo);
         // 创建失败直接返回 false 退出函数
         if (pContext->swapchainFramebuffers[i] == VK_NULL_HANDLE)
             return false;
@@ -346,13 +347,15 @@ static inline bool create_mainRP_triangle_pipeline(
     // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成后
     // 我们既可以调用 vkDestroyShaderModule 进行销毁也可以存着备后用（比如重建管线之类）
     pContext->mainRenderPassPipelines.triangle.vertexShaderModule =    // 顶点着色器
-        createShaderModule(pContext->device, pPipelineCreateInfo->vertexSpvFilePath);
+        vwrpCreateShaderModule(pContext->device,
+            pPipelineCreateInfo->vertexSpvFilePath);
     if (pContext->mainRenderPassPipelines.triangle.vertexShaderModule
         == VK_NULL_HANDLE)
         return false;
 
     pContext->mainRenderPassPipelines.triangle.fragmentShaderModule =  // 片元着色器
-        createShaderModule(pContext->device, pPipelineCreateInfo->fragmentSpvFilePath);
+        vwrpCreateShaderModule(pContext->device, 
+            pPipelineCreateInfo->fragmentSpvFilePath);
     if (pContext->mainRenderPassPipelines.triangle.fragmentShaderModule
         == VK_NULL_HANDLE)
         return false;
@@ -477,7 +480,7 @@ static inline bool create_mainRP_triangle_pipeline(
 
     // 8.5.创建管线布局
     pContext->mainRenderPassPipelines.triangle.pipelineLayout = 
-        createPipelineLayout(pContext->device, &pipelineLayoutInfo);
+        vwrpCreatePipelineLayout(pContext->device, &pipelineLayoutInfo);
     if (pContext->mainRenderPassPipelines.triangle.pipelineLayout == VK_NULL_HANDLE)
         return false;
 
@@ -501,7 +504,7 @@ static inline bool create_mainRP_triangle_pipeline(
 
     // 9.创建图形管线
     pContext->mainRenderPassPipelines.triangle.pipeline =
-        createGraphicsPipeline(pContext->device, &createInfo);
+        vwrpCreateGraphicsPipeline(pContext->device, &createInfo);
     if (pContext->mainRenderPassPipelines.triangle.pipeline == VK_NULL_HANDLE)
         return false;
 
@@ -521,12 +524,12 @@ static bool create_sync_objects(RendererContext* pContext)
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         pContext->swapchainImageAvailableSemaphores[i] =
-            createSemaphore("for swapchain image available synchronous",
+            vwrpCreateSemaphore("for swapchain image available synchronous",
                 pContext->device,
                 &semaphoreInfo);
 
         pContext->frameInFlightFences[i] = 
-            createFence("for one frame in flight synchronous",
+            vwrpCreateFence("for one frame in flight synchronous",
                 pContext->device,
                 &fenceInfo);
 
@@ -542,7 +545,7 @@ static bool create_sync_objects(RendererContext* pContext)
     for (uint32_t i = 0; i < pContext->swapchainImageCount; i++)
     {
         pContext->renderFinishedSemaphores[i] = 
-            createSemaphore("for render finished synchronous",
+            vwrpCreateSemaphore("for render finished synchronous",
                 pContext->device,
                 &semaphoreInfo);
         
@@ -579,7 +582,8 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     for (; i < pContext->swapchainImageCount; i++)
     {
         if (pContext->renderFinishedSemaphores[i])          // 销毁渲染操作触发用信号量
-            destroySemaphore(pContext->device, pContext->renderFinishedSemaphores[i]);
+            vwrpDestroySemaphore(pContext->device,
+                pContext->renderFinishedSemaphores[i]);
     }
 
     free(pContext->renderFinishedSemaphores);   // 释放数组堆内存
@@ -587,11 +591,11 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         if (pContext->swapchainImageAvailableSemaphores[i]) // 销毁请求图像触发用信号量
-            destroySemaphore(pContext->device,
+            vwrpDestroySemaphore(pContext->device,
                 pContext->swapchainImageAvailableSemaphores[i]);
 
         if (pContext->frameInFlightFences[i])               // 销毁帧栅栏
-            destroyFence(pContext->device, pContext->frameInFlightFences[i]);
+            vwrpDestroyFence(pContext->device, pContext->frameInFlightFences[i]);
     }
 
     /**** 管线对象相关 ****/
@@ -601,7 +605,7 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     /**** 命令池对象相关 ****/
 
     if (pContext->mainThreadCommandPool)                           // 销毁主线程命令池
-        destroyCommandPool(pContext->device, pContext->mainThreadCommandPool);
+        vwrpDestroyCommandPool(pContext->device, pContext->mainThreadCommandPool);
 
     /*** 顶点缓冲区相关（临时） ***/    // TODO: 移到更加专门的地方(应该由资源创建者负责销毁)
 
@@ -614,20 +618,20 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     destroy_swapchain_related_resources(pContext);
 
     if (pContext->swapchain != VK_NULL_HANDLE)                     // 销毁交换链
-        destroySwapchain(pContext->device, pContext->swapchain, NULL);
+        vwrpDestroySwapchain(pContext->device, pContext->swapchain, NULL);
     
     /**** Vk 基础对象相关 ****/
 
     if (pContext->vmaAllocator != VK_NULL_HANDLE)                  // 销毁 VMA 分配器
-        destroyVmaAllocator(pContext->vmaAllocator);
+        vwrpDestroyVmaAllocator(pContext->vmaAllocator);
 
     if (pContext->device != VK_NULL_HANDLE)                        // 销毁 Vk 设备
-        destroyLogicalDevice(pContext->device);
+        vwrpDestroyLogicalDevice(pContext->device);
     
     if (pContext->surface != VK_NULL_HANDLE)                       // 销毁窗口表面
-        destroySurface(pContext->instance, pContext->surface);
+        vwrpDestroySurface(pContext->instance, pContext->surface);
 
-    destroyInstance(pContext->instance);                           // 销毁 Vk 实例
+    vwrpDestroyInstance(pContext->instance);                       // 销毁 Vk 实例
 
     free(pContext);     // 释放渲染器上下文结构体
     pContext = NULL;    // 占用的内存
@@ -642,18 +646,18 @@ static void destroy_main_render_pass_pipelines(RendererContext* pContext)
 {
     /**** 销毁 triangle 管线 ****/
     if (pContext->mainRenderPassPipelines.triangle.pipeline)
-        destroyPipeline(pContext->device,
+        vwrpDestroyPipeline(pContext->device,
             pContext->mainRenderPassPipelines.triangle.pipeline);
     // 销毁管线布局
     if (pContext->mainRenderPassPipelines.triangle.pipelineLayout)       
-        destroyPipelineLayout(pContext->device,
+        vwrpDestroyPipelineLayout(pContext->device,
             pContext->mainRenderPassPipelines.triangle.pipelineLayout);
     // 销毁管线着色器模块
     if (pContext->mainRenderPassPipelines.triangle.vertexShaderModule)
-        destroyShaderModule(pContext->device,
+        vwrpDestroyShaderModule(pContext->device,
             pContext->mainRenderPassPipelines.triangle.vertexShaderModule);
     if (pContext->mainRenderPassPipelines.triangle.fragmentShaderModule)
-        destroyShaderModule(pContext->device,
+        vwrpDestroyShaderModule(pContext->device,
             pContext->mainRenderPassPipelines.triangle.fragmentShaderModule);
 }
 
@@ -665,7 +669,7 @@ static void destroy_swapchain_related_resources(RendererContext* pContext)
         for (int i = 0; i < pContext->swapchainImageCount; i++)   
         {
             if (pContext->swapchainFramebuffers[i])
-                destroyFramebuffer(pContext->device,
+                vwrpDestroyFramebuffer(pContext->device,
                     pContext->swapchainFramebuffers[i]);
         }
 
@@ -674,10 +678,10 @@ static void destroy_swapchain_related_resources(RendererContext* pContext)
     }
 
     if (pContext->mainRenderPass)            // 销毁主渲染通道（因为描述了交换链图像做附件）
-        destroyRenderPass(pContext->device, pContext->mainRenderPass);
+        vwrpDestroyRenderPass(pContext->device, pContext->mainRenderPass);
 
     if (pContext->swapchainImageViews)       // 销毁交换链图像视图
-        destroySwapchainImageViews(pContext->device,
+        vwrpDestroySwapchainImageViews(pContext->device,
             pContext->swapchainImageCount,
             &pContext->swapchainImageViews);
 
@@ -705,7 +709,7 @@ bool triangle_allocate_and_fill_vertex_buffer(
     createInfo.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    pContext->triangle_vertexBuffer = createBuffer("for triangle vertex buffer",
+    pContext->triangle_vertexBuffer = vwrpCreateBuffer("for triangle vertex buffer",
                                           pContext->device,
                                           &createInfo);
     if (pContext->triangle_vertexBuffer == VK_NULL_HANDLE)
@@ -733,7 +737,7 @@ bool triangle_allocate_and_fill_vertex_buffer(
 
     // 4.5.分配设备内存
     pContext->triangle_vertexBufferMemory =
-        allocateDeviceMemory("for triangle vertex buffer",
+        vwrpAllocateDeviceMemory("for triangle vertex buffer",
             pContext->device,
             &memoryAllocateInfo);
     if (pContext->triangle_vertexBufferMemory == VK_NULL_HANDLE)
@@ -972,7 +976,7 @@ void rctxDrawFrame(
     submitInfo.pSignalSemaphores    = semaphoresToSignal;
 
     // 提交命令缓冲区至图形队列执行，同时给定栅栏供执行完毕后触发
-    queueSubmit(pContext->graphicsQueue,
+    vwrpQueueSubmit(pContext->graphicsQueue,
         1,
         &submitInfo,
         pContext->frameInFlightFences[frameInFlightIndex]);
@@ -1037,7 +1041,7 @@ static bool record_main_command_buffer(
     commandBufferBeginInfo.flags = 0;
     commandBufferBeginInfo.pInheritanceInfo = NULL;
 
-    if (!beginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
+    if (!vwrpBeginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
         return false;
 
     // TODO: 根据传入的已分类的顶点缓冲区，按类别依次录制渲染（子）通道（绑定、绘制），一次录制包含整一帧的所有工作
@@ -1120,7 +1124,7 @@ static bool record_main_command_buffer(
     //（对于多个 RenderPass，我们调用 vkCmdBeginRenderPass() 以录制下一个 RenderPass）
 
     // 4.结束录制命令缓冲区
-    if (!endCommandBuffer(label, commandBuffer))
+    if (!vwrpEndCommandBuffer(label, commandBuffer))
         return false;
 
     return true;
@@ -1148,7 +1152,7 @@ static void recreate_swapchain(RendererContext* pContext)
     VkSwapchainKHR oldSwapchain = pContext->swapchain;
 
     // 重新创建交换链
-    pContext->swapchain = createSwapchain(pContext->window,
+    pContext->swapchain = vwrpCreateSwapchain(pContext->window,
                               pContext->surface,
                               pContext->physicalDevice,
                               pContext->device,
@@ -1160,10 +1164,10 @@ static void recreate_swapchain(RendererContext* pContext)
 
     // 销毁旧交换链
     if (oldSwapchain != VK_NULL_HANDLE)
-        destroySwapchain(pContext->device, oldSwapchain, NULL);
+        vwrpDestroySwapchain(pContext->device, oldSwapchain, NULL);
 
     // 重新创建交换链图像视图
-    pContext->swapchainImageViews = createSwapchainImageViews(pContext->device,
+    pContext->swapchainImageViews = vwrpCreateSwapchainImageViews(pContext->device,
                                         pContext->swapchainImageFormat,
                                         pContext->swapchainImageCount,
                                         pContext->swapchainImages);

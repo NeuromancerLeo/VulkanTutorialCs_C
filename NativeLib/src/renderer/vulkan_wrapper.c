@@ -32,7 +32,7 @@ static void get_driver_version_string(
 static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath);
 
 
-VkInstance createInstance(void)
+VkInstance vwrpCreateInstance(void)
 {
     // 0.检查验证层是否开启并可用
     if (enableValidationLayers && !check_instance_layer_properties())
@@ -192,7 +192,7 @@ static void check_instance_extension_properties(void)
 }
 
 
-void destroyInstance(VkInstance instance)
+void vwrpDestroyInstance(VkInstance instance)
 {   
     vkDestroyInstance(instance, NULL);
 
@@ -200,7 +200,7 @@ void destroyInstance(VkInstance instance)
 }
 
 
-VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
+VkSurfaceKHR vwrpCreateSurface(VkInstance instance, GLFWwindow* window)
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
 
@@ -218,7 +218,7 @@ VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
 }
 
 
-void destroySurface(VkInstance instance, VkSurfaceKHR surface)
+void vwrpDestroySurface(VkInstance instance, VkSurfaceKHR surface)
 {
     vkDestroySurfaceKHR(instance, surface, NULL);
 
@@ -226,7 +226,7 @@ void destroySurface(VkInstance instance, VkSurfaceKHR surface)
 }
 
 
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
+VkPhysicalDevice vwrpPickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
 {
     // 1.查询可用的物理设备
     uint32_t deviceCount = 0;
@@ -469,7 +469,7 @@ static void get_driver_version_string(
 }
 
 
-VkDevice createLogicalDevice(
+VkDevice vwrpCreateLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
     VkQueue*            pGraphicsQueue,
@@ -602,7 +602,7 @@ VkDevice createLogicalDevice(
 }
 
 
-void destroyLogicalDevice(VkDevice device)
+void vwrpDestroyLogicalDevice(VkDevice device)
 {
     vkDestroyDevice(device, NULL);
 
@@ -610,7 +610,7 @@ void destroyLogicalDevice(VkDevice device)
 }
 
 
-VmaAllocator createVmaAllocator(
+VmaAllocator vwrpCreateVmaAllocator(
     VkInstance          instance,
     VkPhysicalDevice    physicalDevice,
     VkDevice            device
@@ -638,7 +638,7 @@ VmaAllocator createVmaAllocator(
 }
 
 
-void destroyVmaAllocator(VmaAllocator allocator)
+void vwrpDestroyVmaAllocator(VmaAllocator allocator)
 {
     vmaDestroyAllocator(allocator);
 
@@ -646,7 +646,7 @@ void destroyVmaAllocator(VmaAllocator allocator)
 }
 
 
-VkSwapchainKHR createSwapchain(
+VkSwapchainKHR vwrpCreateSwapchain(
     GLFWwindow*         window,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
@@ -812,7 +812,7 @@ VkSwapchainKHR createSwapchain(
 }
 
 
-void destroySwapchain(
+void vwrpDestroySwapchain(
     VkDevice        device, 
     VkSwapchainKHR  swapchain, 
     VkImage**       ppSwapchainImages
@@ -820,7 +820,7 @@ void destroySwapchain(
 {
     vkDestroySwapchainKHR(device, swapchain, NULL);
 
-    // 释放在 createSwapchain() 中分配的交换链图像数组堆内存
+    // 释放在 vwrpCreateSwapchain() 中分配的交换链图像数组堆内存
     if(ppSwapchainImages)
     {
         free(*ppSwapchainImages);
@@ -831,7 +831,7 @@ void destroySwapchain(
 }
 
 
-VkImageView* createSwapchainImageViews(
+VkImageView* vwrpCreateSwapchainImageViews(
     VkDevice        device,
     VkFormat        swapchainImageFormat,
     uint32_t        swapchainImageCount,
@@ -902,7 +902,7 @@ VkImageView* createSwapchainImageViews(
 }
 
 
-void destroySwapchainImageViews(
+void vwrpDestroySwapchainImageViews(
     VkDevice        device,
     uint32_t        swapchainImageCount,
     VkImageView**   ppSwapchainImageViews   // 要销毁的图像视图的数组的地址
@@ -932,7 +932,7 @@ void destroySwapchainImageViews(
 }
 
 
-VkCommandPool createCommandPool(
+VkCommandPool vwrpCreateCommandPool(
     VkDevice                        device,
     const VkCommandPoolCreateInfo*  pCreateInfo
 )
@@ -953,7 +953,7 @@ VkCommandPool createCommandPool(
 }
 
 
-void destroyCommandPool(VkDevice device, VkCommandPool commandPool)
+void vwrpDestroyCommandPool(VkDevice device, VkCommandPool commandPool)
 {
     vkDestroyCommandPool(device, commandPool, NULL);
 
@@ -961,7 +961,7 @@ void destroyCommandPool(VkDevice device, VkCommandPool commandPool)
 }
 
 
-void allocateCommandBuffers(
+void vwrpAllocateCommandBuffers(
     VkDevice                            device,
     const VkCommandBufferAllocateInfo*  pAllocateInfo,
     VkCommandBuffer*                    pCommandBuffers
@@ -992,7 +992,7 @@ void allocateCommandBuffers(
 }
 
 
-bool beginCommandBuffer(
+bool vwrpBeginCommandBuffer(
     const char*                     label,
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo  *pBeginInfo
@@ -1014,7 +1014,7 @@ bool beginCommandBuffer(
 }
 
 
-bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
+bool vwrpEndCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
 {
     VkResult result = vkEndCommandBuffer(commandBuffer);
     if (result != VK_SUCCESS)
@@ -1032,7 +1032,7 @@ bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
 }
 
 
-VkRenderPass createRenderPass(
+VkRenderPass vwrpCreateRenderPass(
     VkDevice                        device,
     const VkRenderPassCreateInfo*   pCreateInfo
 )
@@ -1053,7 +1053,7 @@ VkRenderPass createRenderPass(
 }
 
 
-void destroyRenderPass(VkDevice device, VkRenderPass renderPass)
+void vwrpDestroyRenderPass(VkDevice device, VkRenderPass renderPass)
 {
     vkDestroyRenderPass(device, renderPass, NULL);
 
@@ -1061,7 +1061,7 @@ void destroyRenderPass(VkDevice device, VkRenderPass renderPass)
 }
 
 
-VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo)
+VkFramebuffer vwrpCreateFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo)
 {
     VkFramebuffer framebuffer = VK_NULL_HANDLE;
     VkResult result = vkCreateFramebuffer(device, pCreateInfo, NULL, &framebuffer);
@@ -1078,7 +1078,7 @@ VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreat
 }
 
 
-void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
+void vwrpDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
 {
     vkDestroyFramebuffer(device, framebuffer, NULL);
 
@@ -1086,7 +1086,7 @@ void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
 }
 
 
-VkShaderModule createShaderModule(
+VkShaderModule vwrpCreateShaderModule(
     VkDevice        device,
     const char*     spvFilePath
 )
@@ -1201,7 +1201,7 @@ static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath)
 }
 
 
-void destroyShaderModule(VkDevice device, VkShaderModule shaderModule)
+void vwrpDestroyShaderModule(VkDevice device, VkShaderModule shaderModule)
 {
     vkDestroyShaderModule(device, shaderModule, NULL);
 
@@ -1209,7 +1209,7 @@ void destroyShaderModule(VkDevice device, VkShaderModule shaderModule)
 }
 
 
-VkPipelineLayout createPipelineLayout(
+VkPipelineLayout vwrpCreatePipelineLayout(
     VkDevice                            device,
     const VkPipelineLayoutCreateInfo*   pCreateInfo
 )
@@ -1233,7 +1233,7 @@ VkPipelineLayout createPipelineLayout(
 }
 
 
-void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
+void vwrpDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
 {
     vkDestroyPipelineLayout(device, pipelineLayout, NULL);
 
@@ -1241,7 +1241,7 @@ void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
 }
 
 
-VkPipeline createGraphicsPipeline(
+VkPipeline vwrpCreateGraphicsPipeline(
     VkDevice                             device,
     const VkGraphicsPipelineCreateInfo*  pCreateInfo
 )
@@ -1267,7 +1267,7 @@ VkPipeline createGraphicsPipeline(
 }
 
 
-void destroyPipeline(VkDevice device, VkPipeline pipeline)
+void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline)
 {
     vkDestroyPipeline(device, pipeline, NULL);
 
@@ -1275,7 +1275,7 @@ void destroyPipeline(VkDevice device, VkPipeline pipeline)
 }
 
 
-VkSemaphore createSemaphore(
+VkSemaphore vwrpCreateSemaphore(
     const char*             label,
     VkDevice                device,
     VkSemaphoreCreateInfo*  pCreateInfo    
@@ -1297,7 +1297,7 @@ VkSemaphore createSemaphore(
 }
 
 
-void destroySemaphore(VkDevice device, VkSemaphore semaphore)
+void vwrpDestroySemaphore(VkDevice device, VkSemaphore semaphore)
 {
     vkDestroySemaphore(device, semaphore, NULL);
 
@@ -1305,7 +1305,7 @@ void destroySemaphore(VkDevice device, VkSemaphore semaphore)
 }
 
 
-VkFence createFence(
+VkFence vwrpCreateFence(
     const char*         label,
     VkDevice            device,
     VkFenceCreateInfo*  pCreateInfo    
@@ -1327,7 +1327,7 @@ VkFence createFence(
 }
 
 
-void destroyFence(VkDevice device, VkFence fence)
+void vwrpDestroyFence(VkDevice device, VkFence fence)
 {
     vkDestroyFence(device, fence, NULL);
 
@@ -1335,7 +1335,7 @@ void destroyFence(VkDevice device, VkFence fence)
 }
 
 
-VkBuffer createBuffer(
+VkBuffer vwrpCreateBuffer(
     const char*         label,
     VkDevice            device,
     VkBufferCreateInfo* pCreateInfo
@@ -1357,7 +1357,7 @@ VkBuffer createBuffer(
 }
 
 
-void destroyBuffer(VkDevice device, VkBuffer buffer)
+void vwrpDestroyBuffer(VkDevice device, VkBuffer buffer)
 {
     vkDestroyBuffer(device, buffer, NULL);
 
@@ -1365,7 +1365,7 @@ void destroyBuffer(VkDevice device, VkBuffer buffer)
 }
 
 
-VkDeviceMemory allocateDeviceMemory(
+VkDeviceMemory vwrpAllocateDeviceMemory(
     const char*             label,
     VkDevice                device,
     VkMemoryAllocateInfo*   pAllocateInfo
@@ -1388,7 +1388,7 @@ VkDeviceMemory allocateDeviceMemory(
 }
 
 
-void freeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
+void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
 {
     vkFreeMemory(device, deviceMemory, NULL);
 
@@ -1396,7 +1396,7 @@ void freeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
 }
 
 
-void queueSubmit(
+void vwrpQueueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,
     const VkSubmitInfo  *pSubmitInfos,
