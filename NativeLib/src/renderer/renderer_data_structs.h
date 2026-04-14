@@ -5,6 +5,13 @@
 #include "../common/log.h"
 #include "../common/mathf/mathf.h"
 #include "vulkan/vulkan.h"
+#include "vk_mem_alloc.h"
+
+/// @brief 该结构体打包了 VkBuffer 和 VmaAllocation 对象的句柄，可安全地用于互操作传递
+typedef struct BufferResource {
+    VkBuffer      buffer;
+    VmaAllocation allocation;
+} BufferResource;
 
 /// @brief 代表顶点属性的数据结构.
 typedef struct VertexData {
@@ -37,6 +44,11 @@ void get_vertex_data_input_attribute_descriptions(
     uint32_t*                           pAttributeCount,
     VkVertexInputAttributeDescription*  pAttributeDescriptions
 );
+
+/// @brief 代表索引数据结构
+typedef struct IndexData {
+    uint32_t xxxIndex;
+} IndexData;
 
 /// @brief 对应 vkCmdDraw() 的参数
 typedef struct DrawItemInfo {

@@ -37,7 +37,7 @@ static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int hei
     g_isFramebufferResized = true;
 }
 
-
+static BufferResource g_triangleBuffer = {};
 EX_API bool rendererReady()
 {
     // 模拟 C# 端通过该 DLL 函数传入顶点数据
@@ -56,12 +56,54 @@ EX_API bool rendererReady()
     //     return false;
 
     // TODO: 返回 VkBuffer 资源句柄给 C# 端持有，让其管理负责资源的生命周期！
-    if (!trianle_vma_allocate_and_fill_vertex_buffer(g_context,
-             sizeof(verticesData),
-             verticesData))
-        return false;
+    g_triangleBuffer = rctxCreateAndFillStaticBuffer(g_context,
+                           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                           sizeof(verticesData),
+                           verticesData);
 
     return true;
+}
+
+
+EX_API BufferResource rendererCreateStaticVertexBuffer(
+    size_t              dataSize,
+    const VertexData*   pVertiesData
+)
+{
+    return rctxCreateAndFillStaticBuffer(g_context,
+               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+               dataSize,
+               pVertiesData);
+}
+
+
+EX_API BufferResource rendererCreateStaticIndexBuffer(
+    size_t              dataSize,
+    const IndexData*    pIndicesData
+)
+{
+    return rctxCreateAndFillStaticBuffer(g_context,
+               VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+               dataSize,
+               pIndicesData);
+}
+
+
+EX_API BufferResource rendererCreateDynamicUniformBuffer()
+{
+    return (BufferResource){0};
+}
+
+
+EX_API BufferResource rendererUpdateUniformBuffer()
+{
+    return (BufferResource){0};
+}
+
+
+EX_API void rendererDestroyBuffer()
+{
+
 }
 
 
@@ -72,9 +114,9 @@ EX_API void rendererDrawFrame()
     // TODO: 在渲染器上下文中建立一个句柄表存储对应的 vertex buffer，然后 rctxDrawFrame 内部会根据从外界（C#端）传入的句柄或标识符来查找 VkBuffer 对象并使用.
     
     /**** 三角形管线部分 ****/
-    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.buffer   = 
-        g_context->triangle_vertexBuffer;    // TODO:（这里直接使用储存在 g_context 中的临时 VkBuffer 了）
-    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.offset         = 0;
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.buffer = 
+        g_triangleBuffer.buffer;
+    mainRenderPassPipelinesDrawInfo.triangle.vertexBufferInfo.offset = 0;
 
     // 模拟 C# 端通过该 DLL 函数传入的顶点数据信息
     DrawItemInfo drawItemInfo1 = {};
@@ -105,6 +147,12 @@ EX_API void rendererDrawFrame()
 
 EX_API void rendererRelease()
 {
-    rctxDestroyRendererContext(g_context);
+    // TODO: 不是好主意
+    vkDeviceWaitIdle(g_context->device);    
+
+    // 临时
+    rctxDestroyBuffer(g_context, g_triangleBuffer);
+
+    rctxDestroyRendererContext(g_context);   
 }
 

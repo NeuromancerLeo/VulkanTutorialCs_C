@@ -2,6 +2,7 @@
 
 static bool create_main_thread_command_pool(RendererContext* pContext);
 static bool allocate_main_command_buffers(RendererContext* pContext);
+static bool create_transfer_command_pool(RendererContext* pContext);
 static bool create_main_render_pass(RendererContext* pContext);
 static bool create_swapchain_framebuffers(RendererContext* pContext);
 static bool create_main_render_pass_pipelines(
@@ -14,11 +15,6 @@ static inline bool create_mainRP_triangle_pipeline(
 );
 static void destroy_main_render_pass_pipelines(RendererContext* pContext);
 static bool create_sync_objects(RendererContext* pContext);
-static uint32_t get_device_memory_type_index(
-    VkPhysicalDeviceMemoryProperties*   pPhysicalDeviceMemoryProperties,
-    uint32_t                            requiredMemoryTypeBits,
-    VkMemoryPropertyFlags               requiredMemoryPropertyFlags
-);
 static bool record_main_command_buffer(
     RendererContext*                    pContext,
     uint32_t                            frameInFlightIndex,
@@ -45,7 +41,7 @@ RendererContext* rctxNewRendererContext()
 
 bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
 {
-    log_info("开始构建渲染器上下文...");
+    log_info(ESC_BCOLOR_BRIGHT_BLUE "开始构建渲染器上下文..." ESC_RESET);
 
     pContext->window = window;                          // 保存窗口句柄
 
@@ -53,26 +49,43 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
     if (pContext->instance == VK_NULL_HANDLE)
         return false;
 
+    log_info("成功创建 Vulkan 实例.");
+
     pContext->surface = vwrpCreateSurface(pContext->instance, pContext->window); 
     if (pContext->surface == VK_NULL_HANDLE)            // 创建窗口表面 
         return false;
     
-    pContext->physicalDevice = vwrpPickPhysicalDevice(pContext->instance, pContext->surface);
+    log_info("成功创建窗口表面.");
+
+    pContext->physicalDevice = vwrpPickPhysicalDevice(pContext->instance,
+                                   pContext->surface);
     if (pContext->physicalDevice == VK_NULL_HANDLE)     // 选取物理设备
         return false;
     
+    log_info("成功选取一个物理设备.");
+
     pContext->device = vwrpCreateLogicalDevice(pContext->physicalDevice,
                            pContext->surface,                       // 创建 Vk 设备
+                           &pContext->graphicsQueueFamilyIndex,
                            &pContext->graphicsQueue,
-                           &pContext->presentationQueue);
+                           &pContext->presentationQueueFamilyIndex,
+                           &pContext->presentationQueue,
+                           &pContext->transferQueueFamilyIndex,
+                           &pContext->transferQueue);
     if (pContext->device == VK_NULL_HANDLE)
         return false;
+
+    log_info("成功创建逻辑设备.");
+
+    pthread_mutex_init(&pContext->transferMutex, NULL);        // 初始化传输队列的锁 
 
     pContext->vmaAllocator = vwrpCreateVmaAllocator(pContext->instance,
                                  pContext->physicalDevice,          // 创建 VMA 分配器
                                  pContext->device);
     if (pContext->vmaAllocator == VK_NULL_HANDLE)
         return false;
+
+    log_info("成功创建 VMA 分配器.");
 
     pContext->swapchain = vwrpCreateSwapchain(pContext->window,
                               pContext->surface,        // 为窗口（表面）创建交换链
@@ -93,18 +106,28 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
     if (!pContext->swapchainImageViews)
         return false;
 
+    log_info("成功创建交换链.");
+
     if (!create_main_thread_command_pool(pContext))    // 创建主线程命令池
         return false;
 
     if (!allocate_main_command_buffers(pContext))      // 分配主命令缓冲区
         return false;
 
+    if (!create_transfer_command_pool(pContext))       // 创建传输用命令池
+        return false;
+
+    log_info("成功创建命令池.");
 
     if (!create_main_render_pass(pContext))            // 创建主渲染通道
         return false;
 
+    log_info("成功创建渲染通道.");
+
     if(!create_swapchain_framebuffers(pContext))       // 为主渲染通道创建交换链帧缓冲区
         return false;
+
+    log_info("成功创建帧缓冲区.");
 
     // 为主渲染通道创建所需渲染管线
     RctxMainRenderPassPipelinesCreateInfo mainRenderPassPipelinesCreateInfo = {}; 
@@ -121,11 +144,14 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
              &mainRenderPassPipelinesCreateInfo))
         return false;
 
+    log_info("成功创建渲染管线.");
+
 
     if (!create_sync_objects(pContext))     // 创建同步用对象
         return false;
 
-    log_info("渲染器上下文构建完毕.");
+
+    log_info(ESC_BCOLOR_BRIGHT_BLUE "渲染器上下文构建完毕." ESC_RESET);
 
     return true;
 }
@@ -138,8 +164,10 @@ static bool create_main_thread_command_pool(RendererContext* pContext)
            pContext->surface,
            &queueFamilyIndex);
     
-    QueueFamilyIndices queueFamilyIndices = 
-        find_queue_families(pContext->physicalDevice, pContext->surface);
+    QueueFamilyIndices queueFamilyIndices = {};
+    find_queue_families(pContext->physicalDevice,
+        pContext->surface,
+        &queueFamilyIndices);
 
     // 填写 VkCommandPoolCreateInfo
     VkCommandPoolCreateInfo createInfo = {};
@@ -177,6 +205,24 @@ static bool allocate_main_command_buffers(RendererContext* pContext)
         if (pContext->mainCommandBuffers[i] == VK_NULL_HANDLE)
             return false;
     }
+
+    return true;
+}
+
+static bool create_transfer_command_pool(RendererContext* pContext)
+{
+    // 填写 VkCommandPoolCreateInfo
+    VkCommandPoolCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    // VK_COMMAND_POOL_CREATE_TRANSIENT_BIT 使用一次性的短期命令缓冲区
+    createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+    // 指定命令池对应的队列族，用于传输命令，这里即使用传输队列所在的队列族
+    createInfo.queueFamilyIndex = pContext->transferQueueFamilyIndex;
+
+    pContext->transferCommandPool = vwrpCreateCommandPool(pContext->device,
+                                          &createInfo);
+    if (pContext->transferCommandPool == VK_NULL_HANDLE)
+        return false;
 
     return true;
 }
@@ -559,7 +605,7 @@ static bool create_sync_objects(RendererContext* pContext)
 
 void rctxDestroyRendererContext(RendererContext* pContext)
 {
-    log_info("销毁渲染器上下文...");
+    log_info(ESC_BCOLOR_BRIGHT_BLUE "销毁渲染器上下文..." ESC_RESET);
 
     if (!pContext)
     {
@@ -604,14 +650,15 @@ void rctxDestroyRendererContext(RendererContext* pContext)
 
     /**** 命令池对象相关 ****/
 
+    if (pContext->transferCommandPool)                             // 销毁传输用命令池
+        vwrpDestroyCommandPool(pContext->device, pContext->transferCommandPool);
+
     if (pContext->mainThreadCommandPool)                           // 销毁主线程命令池
         vwrpDestroyCommandPool(pContext->device, pContext->mainThreadCommandPool);
 
-    /*** 顶点缓冲区相关（临时） ***/    // TODO: 移到更加专门的地方(应该由资源创建者负责销毁)
+    /*** 顶点缓冲区相关（临时） ***/
 
-    vmaDestroyBuffer(pContext->vmaAllocator,
-        pContext->triangle_vertexBuffer,
-        pContext->triangle_vertexBufferAllocation);
+        // TODO: 移到更加专门的地方(应该由资源创建者负责销毁)
 
     /**** 交换链对象相关 ****/
 
@@ -625,6 +672,8 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     if (pContext->vmaAllocator != VK_NULL_HANDLE)                  // 销毁 VMA 分配器
         vwrpDestroyVmaAllocator(pContext->vmaAllocator);
 
+    pthread_mutex_destroy(&pContext->transferMutex);               // 销毁传输队列的锁
+
     if (pContext->device != VK_NULL_HANDLE)                        // 销毁 Vk 设备
         vwrpDestroyLogicalDevice(pContext->device);
     
@@ -636,7 +685,7 @@ void rctxDestroyRendererContext(RendererContext* pContext)
     free(pContext);     // 释放渲染器上下文结构体
     pContext = NULL;    // 占用的内存
 
-    log_info("销毁渲染器上下文完毕.");
+    log_info(ESC_BCOLOR_BRIGHT_BLUE "销毁渲染器上下文完毕." ESC_RESET);
 
     return;
 }
@@ -693,178 +742,207 @@ static void destroy_swapchain_related_resources(RendererContext* pContext)
 }
 
 
-// TODO: 想个办法让顶点缓冲区的创建变得通用？我的意思是——也许应该让 C# 端来决定创建怎样的
-// 顶点缓冲区，传入 C 端 DrawFrame() 时附带某种 BindVertexBuffersInfo、DrawInfo
-// TODO: 返回代表 VkBuffer 对象的 Id，而不是直接存在内部的 pContext 中
-bool triangle_allocate_and_fill_vertex_buffer(
-    RendererContext*    pContext,
-    size_t              dataSize,
-    const VertexData*   pVerticesData
+BufferResource rctxCreateAndFillStaticBuffer(
+    RendererContext*          pContext,
+    VkBufferUsageFlagBits     usage,
+    size_t                    dataSize,
+    const void*               pData
 )
 {
-    // 1.创建 VkBuffer
-    VkBufferCreateInfo createInfo = {};
-    createInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.size        = dataSize;
-    createInfo.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    pContext->triangle_vertexBuffer = vwrpCreateBuffer("for triangle vertex buffer",
-                                          pContext->device,
-                                          &createInfo);
-    if (pContext->triangle_vertexBuffer == VK_NULL_HANDLE)
-        return false;
-
-    // 2.获取 Buffer 的 Memory Requirements
-    VkMemoryRequirements bufferMemoryRequirements = {};
-    vkGetBufferMemoryRequirements(pContext->device,
-        pContext->triangle_vertexBuffer,
-        &bufferMemoryRequirements);
-
-    // 3.获取物理设备内存属性
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
-    vkGetPhysicalDeviceMemoryProperties(pContext->physicalDevice,
-        &physicalDeviceMemoryProperties);
-
-    // 4.根据 Buffer 的 Memory Requirements 填写 VkMemoryAllocateInfo
-    VkMemoryAllocateInfo memoryAllocateInfo = {};
-    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
-    memoryAllocateInfo.memoryTypeIndex =
-        get_device_memory_type_index(&physicalDeviceMemoryProperties,
-            bufferMemoryRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    // 4.5.分配设备内存
-    pContext->triangle_vertexBufferMemory =
-        vwrpAllocateDeviceMemory("for triangle vertex buffer",
-            pContext->device,
-            &memoryAllocateInfo);
-    if (pContext->triangle_vertexBufferMemory == VK_NULL_HANDLE)
-        return false;
-
-    // 5.绑定 Buffer 至设备内存
-    VkResult result = vkBindBufferMemory(pContext->device,
-                          pContext->triangle_vertexBuffer,
-                          pContext->triangle_vertexBufferMemory,
-                          0);
-    if (result != VK_SUCCESS)
-    {
-        log_error("Failed to bind a VkDeviceMemory with a VkBuffer! "
-            "Error Code(VkResult): %d",
-             result);
-
-        return false;
-    }
-
-    // 6.填充 Buffer，这是通过将与缓冲区绑定的设备内存映射到 CPU 端的内存，然后将数据内存复制
-    // 到被映射的内存中去来实现的
-    void* pData;
-    result = vkMapMemory(pContext->device,
-                 pContext->triangle_vertexBufferMemory,
-                 0,                  // 设备内存映射起始偏移量
-                 dataSize,           // 设备内存映射大小
-                 0,
-                 &pData);            // 映射到的 CPU 内存
-    if (result != VK_SUCCESS)
-    {
-        log_error("Failed to map a VkDeviceMemory to host-visible memory! "
-            "Error Code(VkResult): %d",
-             result);
-
-        return false;
-    }
-
-    memcpy(pData, pVerticesData, dataSize);
+    // 1.创建 HOST_VISIBLE 的暂存缓冲区
+    VkBufferCreateInfo stagingBufferCreateInfo = {};
+    stagingBufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    stagingBufferCreateInfo.size        = dataSize;
+    stagingBufferCreateInfo.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    stagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     
-    // 因为使用了带 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 属性的内存类型，所以不用手动 flush
-
-    vkUnmapMemory(pContext->device, pContext->triangle_vertexBufferMemory);
-
-    return true;
-}
-
-static uint32_t get_device_memory_type_index(
-    VkPhysicalDeviceMemoryProperties*   pPhysicalDeviceMemoryProperties,
-    uint32_t                            requiredMemoryTypeBits,
-    VkMemoryPropertyFlags               requiredMemoryPropertyFlags
-)
-{
-    for (uint32_t i = 0; i < pPhysicalDeviceMemoryProperties->memoryTypeCount; i++)
-    {
-        if ((requiredMemoryTypeBits & (1 << i)) 
-            && ((pPhysicalDeviceMemoryProperties->memoryTypes[i].propertyFlags
-                   & requiredMemoryPropertyFlags) == requiredMemoryPropertyFlags))
-            return i;
-    }
-
-    log_error("%s()：要求的内存类型和属性在物理设备中不可用！要求的内存类型 Bits：%x；"
-        "要求的内存属性 Flags：%x",
-        requiredMemoryTypeBits, requiredMemoryPropertyFlags);
-
-    return UINT32_MAX;
-}
-
-
-bool trianle_vma_allocate_and_fill_vertex_buffer(  //TODO: 返回资源句柄，而不是存在 pContext 中
-    RendererContext*    pContext,
-    size_t              dataSize,
-    const VertexData*   pVerticesData
-)
-{
-    VkBufferCreateInfo createInfo = {};
-    createInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    createInfo.size        = dataSize;
-    createInfo.usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    
-    VmaAllocationCreateInfo allocationCreateInfo = {};
-    allocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocationCreateInfo.flags =
+    VmaAllocationCreateInfo stagingBufferAllocationCreateInfo = {};
+    stagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    stagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-    VkBuffer buffer = VK_NULL_HANDLE;
-    VmaAllocation allocation = VK_NULL_HANDLE;
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    VmaAllocation stagingAllocation = VK_NULL_HANDLE;
+    VmaAllocationInfo stagingBufferAllocationInfo = {};
 
     VkResult result = vmaCreateBuffer(pContext->vmaAllocator,
-                          &createInfo,
-                          &allocationCreateInfo,
-                          &buffer,
-                          &allocation,
-                          NULL);
+                          &stagingBufferCreateInfo,
+                          &stagingBufferAllocationCreateInfo,
+                          &stagingBuffer,
+                          &stagingAllocation,
+                          &stagingBufferAllocationInfo);
     if (result != VK_SUCCESS)
     {
-        log_error("VMA has an error creating VkBuffer! "
-            "Error Code(VkResult): %d",
-             result);
+        log_error("%s(): VMA has an error creating VkBuffer! "
+            "Error Code(VkResult): %d", __func__, result);
 
-        return false;
+        return (BufferResource){0};
     }
 
-    vmaSetAllocationName(pContext->vmaAllocator, allocation, "triangleVB");
-
-    void* pData;
-    result = vmaMapMemory(pContext->vmaAllocator, allocation, &pData);
-    if (result != VK_SUCCESS)
-    {
-        log_error("VMA failed to map a VmaAllocation to host-visible memory! "
-            "Error Code(VkResult): %d",
-             result);
-
-        return false;
-    }
-
-    memcpy(pData, pVerticesData, dataSize);
+    // 将数据写入暂存缓冲区
+    memcpy(stagingBufferAllocationInfo.pMappedData, pData, dataSize);
     
     // 非 coherent 内存，甲方写入后均应手动刷新同步至乙方内存
-    vmaFlushAllocation(pContext->vmaAllocator, allocation, 0, dataSize);
+    vmaFlushAllocation(pContext->vmaAllocator, stagingAllocation, 0, dataSize);
 
-    vmaUnmapMemory(pContext->vmaAllocator, allocation);
+    // 2.接下来创建最终的 Vertex Buffer（DEVICE_LOCAL）
+    uint32_t sharingQueueFamilyIndices[2];  // 这里先准备好当资源 Sharing Mode 需为并发时，
+                                            // 要用到的队列族指明数组
+    VkBufferCreateInfo vertexBufferCreateInfo = {};
+    vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vertexBufferCreateInfo.size  = dataSize;
+    vertexBufferCreateInfo.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    // Buffer 资源会被图形队列和传输队列使用
+    if (pContext->graphicsQueueFamilyIndex == pContext->transferQueueFamilyIndex)
+    {
+        vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+    else
+    {
+        // 并发模式可以让驱动来帮我操心资源的队列所有权转移，我就不用写屏障了
+        vertexBufferCreateInfo.sharingMode           = VK_SHARING_MODE_CONCURRENT;
+        vertexBufferCreateInfo.queueFamilyIndexCount = 2;
+        sharingQueueFamilyIndices[0] = pContext->graphicsQueueFamilyIndex;
+        sharingQueueFamilyIndices[1] = pContext->transferQueueFamilyIndex;
+        vertexBufferCreateInfo.pQueueFamilyIndices   = sharingQueueFamilyIndices;
+    }
 
-    // TODO: 将 VkBuffer 和相关资源对象返回给调用者
-    pContext->triangle_vertexBuffer = buffer;
-    pContext->triangle_vertexBufferAllocation = allocation;
+    VmaAllocationCreateInfo vertexBufferAllocationCreateInfo = {};
+    vertexBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-    return true;
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VmaAllocation vertexBufferAllocation = VK_NULL_HANDLE;
+    result = vmaCreateBuffer(pContext->vmaAllocator,
+        &vertexBufferCreateInfo,
+        &vertexBufferAllocationCreateInfo,
+        &vertexBuffer,
+        &vertexBufferAllocation,
+        NULL);
+    if (result != VK_SUCCESS)
+    {
+        log_error("%s(): VMA has an error creating VkBuffer! "
+            "Error Code(VkResult): %d", __func__, result);
+
+        vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
+        
+        return (BufferResource){0};
+    }
+
+    vmaSetAllocationName(pContext->vmaAllocator,
+        vertexBufferAllocation,
+        "VertexBuffer");
+
+    // 3.分配一个传输用命令缓冲区用于执行复制命令
+    // 这里是在加锁前准备好需要的结构体和栅栏，避免在锁内分配，减少锁占用时间
+    
+    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+
+    VkCommandBufferAllocateInfo commandBufferAllocInfo = {};
+    commandBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocInfo.commandPool        = pContext->transferCommandPool;
+    commandBufferAllocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocInfo.commandBufferCount = 1;
+
+    VkCommandBufferBeginInfo commandBufferBegineInfo = {};
+    commandBufferBegineInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBegineInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    VkBufferCopy copyRegion = {};
+    // copyRegion.srcOffset = 0;  // 源缓冲区偏移量
+    // copyRegion.dstOffset = 0;  // 目标缓冲区偏移量
+    copyRegion.size         = dataSize;
+
+    VkFenceCreateInfo fenceCreateInfo = {};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    VkFence fence = vwrpCreateFence("用于 VkBuffer 的复制（Staging 上传）",
+                        pContext->device,
+                        &fenceCreateInfo);
+
+    // XXX: 这里开始加锁，因为开始使用命令池请求分配 CommandBuffer 了
+    pthread_mutex_lock(&pContext->transferMutex);
+
+    vwrpAllocateCommandBuffers(pContext->device,
+        &commandBufferAllocInfo,
+        &commandBuffer);
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &commandBuffer;
+
+    // 4.开始录制这个命令缓冲区
+    if (!vwrpBeginCommandBuffer("用于 VkBuffer 的复制（Staging 上传）",
+             commandBuffer, 
+             &commandBufferBegineInfo))
+    {
+        pthread_mutex_unlock(&pContext->transferMutex);
+
+        log_error("%s(): 开始录制命令缓冲区时发生错误！上传到设备本地内存失败。",
+            __func__);
+        
+        vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
+        vmaDestroyBuffer(pContext->vmaAllocator, vertexBuffer, vertexBufferAllocation);
+
+        return (BufferResource){0};
+    }
+    
+        vkCmdCopyBuffer(commandBuffer, stagingBuffer, vertexBuffer, 1, &copyRegion);
+
+    vwrpEndCommandBuffer("用于 VkBuffer 的复制（Staging 上传）", commandBuffer);
+
+    // 5.可以上传到传输队列了
+    vwrpQueueSubmit(pContext->transferQueue, 1, &submitInfo, fence);
+    
+    // XXX: 提交到队列后就可以解锁了
+    pthread_mutex_unlock(&pContext->transferMutex);
+
+    // 因为锁已经保证了线程安全，故在 C# 端该函数可以包装成异步函数使用，这样就不会阻塞 C# 端
+    // 代码；异步方法都会返回一个 Task 供用户查询函数执行状态，这意味着函数的执行完毕应该代表
+    // GPU 确实完成了其工作（数据上传、负责、读写等）而不是仅上传了之后函数就退出了。
+    // 这样用户就可以根据 Task 的状态来轻松选择执行依赖该函数涉及的资源的代码的时机（比如用户
+    // 可以决定加载场景的代码需要等待该场景里模型的数据确实上传 GPU 完毕后才能执行）
+
+    // 6.所以接下来我们不是直接退出函数，而是同步等待 fence
+    vkWaitForFences(pContext->device, 1, &fence, VK_TRUE, UINT64_MAX);
+
+    // 命令缓冲区需要执行完毕了才能释放，这里重新加锁
+    pthread_mutex_lock(&pContext->transferMutex);
+    
+    vkFreeCommandBuffers(pContext->device,
+        pContext->transferCommandPool,
+        1,
+        &commandBuffer);
+    
+    pthread_mutex_unlock(&pContext->transferMutex);
+
+    vwrpDestroyFence(pContext->device, fence);
+
+    vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
+
+    BufferResource bufferHandle = {};
+    bufferHandle.buffer = vertexBuffer;
+    bufferHandle.allocation = vertexBufferAllocation;
+
+    log_info("创建了一个静态 VertexBuffer: %p.", vertexBuffer);
+
+    return bufferHandle;
+}
+
+
+void rctxRequestDestroyBuffer(RendererContext* pContext, BufferResource bufferResource)
+{
+    // TODO: 用于请求销毁 Buffer 资源，实现延迟销毁
+}
+
+
+void rctxDestroyBuffer(RendererContext* pContext, BufferResource bufferResource)
+{
+    log_info("立即销毁 Buffer: %p.", bufferResource.buffer);
+
+    vmaDestroyBuffer(pContext->vmaAllocator,
+        bufferResource.buffer,
+        bufferResource.allocation);
 }
 
 
@@ -916,8 +994,8 @@ void rctxDrawFrame(
     }
 
     // 等待完毕并检查不需要交换链重建后重置 In Flight 帧栅栏
-    //（确保下文我们一定会使用该帧栅栏如调用 vkQueueSubmit() 时，才重置，不然的话如果在检查交换
-    // 链是否需要重建之前就重置帧栅栏，当遇到交换链需要重建时 draw_frame 会直接 return，
+    //（确保下文我们一定会使用该帧栅栏如调用 vkQueueSubmit() 时，才重置，不然的话如果在检查
+    // 交换链是否需要重建之前就重置帧栅栏，当遇到交换链需要重建时 draw_frame 会直接 return，
     // 这样在该次 draw_frame 被重置的栅栏就没有任何提交函数会使用和触发它，而下一次等待它的
     // draw_frame 就会永远等待它，造成死锁）
     vkResetFences(pContext->device,
@@ -942,17 +1020,17 @@ void rctxDrawFrame(
     };
 
     // 指定所有等待信号量对应的等待阶段
-    //（这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段
-    // 等待 交换链图像可用 信号量）
+    // “这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段
+    // 等待 交换链图像可用 信号量”
     //（注：以上说法是错误的，实际上在渲染通道开始时，由于没有定义外部子通道依赖，隐式
     // 的外部子通道依赖会使得引用图像的子通道（这里是引用了交换链图像）会在任何可能的时间点对
     // 这些图像进行布局转换（Desc.initLayout 到 Ref.layout），所以从这个方面看，
     // 这里的 waitOnStages 应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT 阶段才对，但这样设置
     // 会导致不必要的空闲等待，毕竟在这里我们子通道前期阶段的执行确实不会用到交换链图像；
     // 所以更好的方法是显式定义与外部子通道的子通道依赖，
-    // 告诉 Vulkan 我们该子通道的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真正
-    // 开始使用交换链图像的阶段）依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）的 
-    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段 —— 这个阶段的完成意味着请求的
+    // 告诉 Vulkan 我们该子通道的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真
+    // 正开始使用交换链图像的阶段）依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）
+    // 的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段 —— 这个阶段的完成意味着请求的
     // 交换链图像可用）
     VkPipelineStageFlags waitOnStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -994,19 +1072,19 @@ void rctxDrawFrame(
 
     // 呈现
     // 注：这里必须说明的是，信号量是 “被消耗的”，一旦其被触发，谁等待它，谁就负责重置它
-    // 所以这里提交了呈现，进入下一个循环时，假设上个循环的呈现操作不够快，
-    // 还没来得及 “消耗” 指定的 presentInfo.pWaitSemaphores 中的信号量时，
-    // 这些信号量在下个循环，甚至是下个循环执行到提交渲染操作（调用 vkQueueSubmit）、GPU 执行
-    // 渲染操作完毕，将要触发指定要触发的信号量（也就是呈现要等待的信号量）时，
-    // 它们都还未被上个循环的呈现操作消耗掉（仍处于已触发状态），这便导致了验证层
-    // VUID-vkQueueSubmit-pSignalSemaphores-00067 报错.
-    // 简单来说，vkQueuePresentKHR() 不像 vkQueueSubmit()，前者并没有提供触发信号量或栅栏之类
-    // 的同步原语的方法 (在没有扩展的情况下)，所以重用呈现操作所消耗的信号量对象的时机并不太清晰，
-    // 详见 https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html.
-    // 推荐的解决方案是，基于交换链图像的数量创建多个信号量，每次 InFlight 循环所用的交换链图像
-    // 其渲染和呈现操作均使用 swapchainImageIndex 来取信号量使用，一个交换链图像对应一个信号量，
-    // 这样上个循环使用的信号量就不关下个循环的事，等到下一次使用同一个信号量时，消耗它的呈现操作
-    // 必然是早就完成了的.
+    // 所以这里提交了呈现，进入下一个循环时，假设上个循环的呈现操作不够快，还没来得及 “消耗” 
+    // 指定的 presentInfo.pWaitSemaphores 中的信号量时，这些信号量在下个循环，甚至是下个循
+    // 环执行到提交渲染操作（调用 vkQueueSubmit）、GPU 执行渲染操作完毕，将要触发指定要触发
+    // 的信号量（也就是呈现要等待的信号量）时，它们都还未被上个循环的呈现操作消耗掉（仍处于已
+    // 触发状态），这便导致了验证层 VUID-vkQueueSubmit-pSignalSemaphores-00067 报错.
+    // 
+    // 简单来说，vkQueuePresentKHR() 不像 vkQueueSubmit()，前者并没有提供触发信号量或栅栏之
+    // 类的同步原语的方法 (在没有扩展的情况下)，所以重用呈现操作所消耗的信号量对象的时机并不太
+    // 清晰，详见 https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html.
+    // 推荐的解决方案是，基于交换链图像的数量创建多个信号量，每次 InFlight 循环所用的交换链图
+    // 像其渲染和呈现操作均使用 swapchainImageIndex 来取信号量使用，一个交换链图像对应一个信
+    // 号量，这样上个循环使用的信号量就不关下个循环的事，等到下一次使用同一个信号量时，消耗它
+    // 的呈现操作必然是早就完成了的.
     result = vkQueuePresentKHR(pContext->presentationQueue, &presentInfo);
     // 如果交换链过时或为次优，重建交换链
     if (result == VK_ERROR_OUT_OF_DATE_KHR 
@@ -1138,7 +1216,7 @@ static void recreate_swapchain(RendererContext* pContext)
     if (width == 0 || height == 0)
         return;
 
-    log_info("触发了交换链重建，oldSwapchain: %p, extent: %d x %d",
+    log_info("触发了交换链重建，Old Swapchain: %p, extent: %d x %d",
         pContext->swapchain,
         pContext->swapchainExtent.width,
         pContext->swapchainExtent.height);

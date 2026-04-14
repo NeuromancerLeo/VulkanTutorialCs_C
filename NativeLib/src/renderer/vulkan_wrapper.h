@@ -51,16 +51,24 @@ VkPhysicalDevice vwrpPickPhysicalDevice(VkInstance instance, VkSurfaceKHR surfac
 
 /// @brief 根据给定物理设备创建逻辑设备.
 ///
-/// @param pGraphicsQueue 输出参数，函数执行成功后，输出一个有效的 VkQueue 句柄（graphics）
-/// @param pPresentationQueue 输出参数，函数执行成功后，输出一个有效的 VkQueue 句柄
-///（presentation）
+/// @param pGraphicsQueueFamilyIndex 输出参数，输出对应图形队列的所属队列族索引，错误时为 -1
+/// @param pGraphicsQueue 输出参数，输出有效的 VkQueue 句柄（graphics），发生错误时为 `NULL`
+/// @param pPresentationQueueFamilyIndex 输出参数，输出对应呈现队列的所属队列族索引，错误时为 -1
+/// @param pPresentationQueue 输出参数，输出有效的 VkQueue 句柄（presentation），
+/// @param pTransferQueueFamilyIndex 输出参数，输出对应传输队列的所属队列族索引，错误时为 -1
+/// @param pTransferQueue 输出参数，输出有效的 VkQueue 句柄（transfer），发生错误时为 `NULL`
+/// 发生错误时为 `NULL`
 ///
 /// @return 返回新创建的 VkDevice 句柄（当发生错误时返回 `NULL`）
 VkDevice vwrpCreateLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
+    uint32_t*           pGraphicsQueueFamilyIndex,
     VkQueue*            pGraphicsQueue,
-    VkQueue*            pPresentationQueue
+    uint32_t*           pPresentationQueueFamilyIndex,
+    VkQueue*            pPresentationQueue,
+    uint32_t*           pTransferQueueFamilyIndex,
+    VkQueue*            pTransferQueue
 );
 
 
@@ -175,9 +183,12 @@ void vwrpDestroyCommandPool(VkDevice device, VkCommandPool commandPool);
 
 
 /// @brief 分配（多个）命令缓冲区.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandPool` 对象
+///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pAllocateInfo 给定的命令缓冲区分配信息
-/// @param pCommandBuffers 输出参数作为目标，要求指向有效的 VkCommandBuffer 句柄的数组
+/// @param pCommandBuffers 输出参数，函数失败时输出 `NULL`
 void vwrpAllocateCommandBuffers(
     VkDevice                            device,
     const VkCommandBufferAllocateInfo*  pAllocateInfo,
@@ -186,6 +197,8 @@ void vwrpAllocateCommandBuffers(
 
 
 /// @brief 开始录制给定命令缓冲区.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandBuffer` 对象
 ///
 /// @param label 描述性标签，仅供输出日志信息用
 /// @param commandBuffer 目标命令缓冲区
@@ -200,6 +213,8 @@ bool vwrpBeginCommandBuffer(
 
 
 /// @brief 结束录制给定命令缓冲区.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandBuffer` 对象
 ///
 /// @param label 描述性标签，仅供输出日志信息用
 /// @param commandBuffer 目标命令缓冲区
@@ -233,7 +248,10 @@ void vwrpDestroyRenderPass(VkDevice device, VkRenderPass renderPass);
 /// @param pCreateInfo 给定的帧缓冲区创建信息
 ///
 /// @return 返回新创建的 VkFramebuffer 句柄（当发生错误时返回 `NULL`）
-VkFramebuffer vwrpCreateFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo);
+VkFramebuffer vwrpCreateFramebuffer(
+    VkDevice                          device,
+    const VkFramebufferCreateInfo*    pCreateInfo
+);
 
 
 /// @brief 销毁给定的 VkFramebuffer.
@@ -300,6 +318,7 @@ VkPipeline vwrpCreateGraphicsPipeline(
 void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline);
 
 
+/// @brief 创建一个信号量，用于在 GPU 端等待 GPU 端完成提交的命令.
 VkSemaphore vwrpCreateSemaphore(
     const char*             label,
     VkDevice                device,
@@ -307,9 +326,11 @@ VkSemaphore vwrpCreateSemaphore(
 );
 
 
+/// @brief 销毁给定的 VkSemaphore. 
 void vwrpDestroySemaphore(VkDevice device, VkSemaphore semaphore);
 
 
+/// @brief 创建一个栅栏，用于在 CPU 端等待 GPU 端完成提交的命令. 
 VkFence vwrpCreateFence(
     const char*         label,
     VkDevice            device,
@@ -317,6 +338,7 @@ VkFence vwrpCreateFence(
 );
 
 
+/// @brief 销毁给定的 VkFence.
 void vwrpDestroyFence(VkDevice device, VkFence fence);
 
 
@@ -340,6 +362,9 @@ VkDeviceMemory vwrpAllocateDeviceMemory(
 void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory);
 
 
+/// @brief 提交命令缓冲区至队列.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkQueue` 对象
 void vwrpQueueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,

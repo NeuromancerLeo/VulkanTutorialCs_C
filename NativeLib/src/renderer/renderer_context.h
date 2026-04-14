@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
+#include <pthread.h>
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -49,8 +50,18 @@ typedef struct RendererContext {
     
     VkPhysicalDevice    physicalDevice;
     VkDevice            device;
+
+    uint32_t            graphicsQueueFamilyIndex;
     VkQueue             graphicsQueue;
+
+    uint32_t            presentationQueueFamilyIndex;
     VkQueue             presentationQueue;
+
+    uint32_t            transferQueueFamilyIndex;
+    VkQueue             transferQueue;    
+
+    // 传输操作用锁，用于对应的队列和命令池，这两个 Vulkan 对象都不是线程安全的
+    pthread_mutex_t     transferMutex;
 
     VmaAllocator        vmaAllocator;
 
@@ -64,6 +75,8 @@ typedef struct RendererContext {
     VkCommandPool       mainThreadCommandPool;
     VkCommandBuffer     mainCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+    VkCommandPool       transferCommandPool;
+
     VkRenderPass                    mainRenderPass;
     VkFramebuffer*                  swapchainFramebuffers; // 堆分配的数组，需自行释放
     RctxMainRenderPassPipelines     mainRenderPassPipelines;
@@ -75,10 +88,6 @@ typedef struct RendererContext {
     // 栅栏：表示一个渲染进行中的帧（执行命令缓冲区），用于防止命令缓冲区发生竞态
     VkFence             frameInFlightFences[MAX_FRAMES_IN_FLIGHT];
 
-    // 仅临时
-    VkBuffer            triangle_vertexBuffer;
-    VkDeviceMemory      triangle_vertexBufferMemory;
-    VmaAllocation       triangle_vertexBufferAllocation;
 } RendererContext;
 
 
@@ -103,18 +112,35 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window);
 void rctxDestroyRendererContext(RendererContext* pContext);
 
 
-bool triangle_allocate_and_fill_vertex_buffer(
-    RendererContext*    pContext,
-    size_t              dataSize,
-    const VertexData*   pVerticesData
+/// @brief 创建并填充静态性缓冲区，内部使用 StagingBuffer 并使用传送队列复制数据到设备本地的
+/// Buffer 上.
+///
+/// 该函数已被设计成线程安全的，你可以任意使用不同的线程来调用该函数.
+/// 
+/// @param usage 指示缓冲区用途
+/// @param dataSize 上传数据的大小
+/// @param pVerticesData 要上传的数据
+///
+/// @return 上传完毕后返回对应设备本地 Buffer（发生错误时句柄会设为 0）.
+BufferResource rctxCreateAndFillStaticBuffer(
+    RendererContext*          pContext,
+    VkBufferUsageFlagBits     usage,
+    size_t                    dataSize,
+    const void*               pData
 );
 
 
-bool trianle_vma_allocate_and_fill_vertex_buffer(
-    RendererContext*    pContext,
-    size_t              dataSize,
-    const VertexData*   pVerticesData
-);
+/// @brief 请求销毁 Buffer 资源，该函数不会立即执行销毁，而是会将目标 Buffer 资源标记为待销毁，
+/// 其会被暂存至安全的时机然后销毁，无需额外操作.
+///
+/// 在调用该函数后，你不应该以任何方式再次使用已被请求销毁的 Buffer 资源. 
+void rctxRequestDestroyBuffer(RendererContext* pContext, BufferResource bufferResource);
+
+
+/// @brief 立即销毁 Buffer 资源，该函数不会对目标 Buffer 资源作任何如是否被命令缓冲区占用的检查.
+///
+/// 一般在你确保 Buffer 资源不会被占用时才调用该函数.
+void rctxDestroyBuffer(RendererContext* pContext, BufferResource bufferResource);
 
 
 /// @brief DrawFrame 函数，请求交换链图像、检查是否重建交换链、录制主命令缓冲区、提交渲染与呈现.
