@@ -18,6 +18,8 @@
 
 typedef struct RctxPipeline {
     VkPipeline          pipeline;
+    uint32_t            vertexFirstBindingIndex;
+    uint32_t            vertexBindingCount;
     VkShaderModule      vertexShaderModule;
     VkShaderModule      fragmentShaderModule;
     VkPipelineLayout    pipelineLayout;
@@ -122,11 +124,13 @@ void rctxDestroyRendererContext(RendererContext* pContext);
 /// @param pVerticesData 要上传的数据
 ///
 /// @return 上传完毕后返回对应设备本地 Buffer（发生错误时句柄会设为 0）.
-BufferResource rctxCreateAndFillStaticBuffer(
+bool rctxCreateAndFillStaticBuffer(
     RendererContext*          pContext,
     VkBufferUsageFlagBits     usage,
     size_t                    dataSize,
-    const void*               pData
+    const void*               pData,
+    VkBuffer*                 outBuffer,
+    VmaAllocation*            outAllocation
 );
 
 
@@ -134,13 +138,21 @@ BufferResource rctxCreateAndFillStaticBuffer(
 /// 其会被暂存至安全的时机然后销毁，无需额外操作.
 ///
 /// 在调用该函数后，你不应该以任何方式再次使用已被请求销毁的 Buffer 资源. 
-void rctxRequestDestroyBuffer(RendererContext* pContext, BufferResource bufferResource);
+void rctxRequestDestroyBuffer(
+    RendererContext*    pContext,
+    VkBuffer            buffer,
+    VmaAllocation       allocation
+);
 
 
 /// @brief 立即销毁 Buffer 资源，该函数不会对目标 Buffer 资源作任何如是否被命令缓冲区占用的检查.
 ///
 /// 一般在你确保 Buffer 资源不会被占用时才调用该函数.
-void rctxDestroyBuffer(RendererContext* pContext, BufferResource bufferResource);
+void rctxDestroyBuffer(
+    RendererContext*    pContext,
+    VkBuffer            buffer,
+    VmaAllocation       allocation
+);
 
 
 /// @brief DrawFrame 函数，请求交换链图像、检查是否重建交换链、录制主命令缓冲区、提交渲染与呈现.

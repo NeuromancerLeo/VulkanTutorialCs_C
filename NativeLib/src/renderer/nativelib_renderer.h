@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../common/log.h"
 #include "../common/nativelib.h"
 #include "renderer_context.h"
 #include "renderer_data_structs.h"
@@ -14,22 +15,26 @@ EX_API bool rendererInitialize(GLFWwindow* window);
 EX_API bool rendererReady();
 
 
-EX_API BufferResource rendererCreateStaticVertexBuffer(
-    size_t              dataSize,
-    const VertexData*   pVertiesData
+EX_API bool rendererCreateStaticVertexBuffer(
+    uint32_t            dataSize,
+    const VertexData*   pVertiesData,
+    VkBuffer*           outBuffer,
+    VmaAllocation*      outAllocation
 );
 
 
-EX_API BufferResource rendererCreateStaticIndexBuffer(
-    size_t              dataSize,
-    const IndexData*    pIndicesData
+EX_API bool rendererCreateStaticIndexBuffer(
+    uint32_t            dataSize,
+    const uint32_t*     pIndicesData,
+    VkBuffer*           outBuffer,
+    VmaAllocation*      outAllocation
 );
 
 
-EX_API BufferResource rendererCreateDynamicUniformBuffer();
+EX_API bool rendererCreateDynamicUniformBuffer();
 
 
-EX_API BufferResource rendererUpdateUniformBuffer();
+EX_API bool rendererUpdateUniformBuffer();
 
 
 EX_API void rendererDestroyBuffer();

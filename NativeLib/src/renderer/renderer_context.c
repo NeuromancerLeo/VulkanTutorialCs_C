@@ -9,7 +9,7 @@ static bool create_main_render_pass_pipelines(
     RendererContext*                          pContext,
     RctxMainRenderPassPipelinesCreateInfo*    pPipelinesCreateInfo
 );
-static inline bool create_mainRP_triangle_pipeline(
+static inline bool create_mainrp_triangle_pipeline(
     RendererContext*           pContext,
     RctxPipelineCreateInfo*    pPipelineCreateInfo
 );
@@ -27,10 +27,6 @@ static void recreate_swapchain(RendererContext* pContext);
 
 RendererContext* rctxNewRendererContext()
 {
-#ifndef DEBUG
-    log_set_level(LOG_INFO);
-#endif
-
     // 分配堆内存
     RendererContext* pContext = (RendererContext*)calloc(1, sizeof(RendererContext));
     if (!pContext) return NULL;
@@ -359,13 +355,13 @@ static bool create_main_render_pass_pipelines(
     RctxMainRenderPassPipelinesCreateInfo*    pPipelinesCreateInfo
 )
 {
-    if(!create_mainRP_triangle_pipeline(pContext, &pPipelinesCreateInfo->triangle))
+    if(!create_mainrp_triangle_pipeline(pContext, &pPipelinesCreateInfo->triangle))
         return false;
 
     return true;
 }
 
-static inline bool create_mainRP_triangle_pipeline(
+static inline bool create_mainrp_triangle_pipeline(
     RendererContext*           pContext,
     RctxPipelineCreateInfo*    pPipelineCreateInfo
 )
@@ -390,8 +386,8 @@ static inline bool create_mainRP_triangle_pipeline(
 
 
     // 1.（配置着色器阶段）创建着色器模块
-    // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成后
-    // 我们既可以调用 vkDestroyShaderModule 进行销毁也可以存着备后用（比如重建管线之类）
+    // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成
+    // 后我们既可以调用 vkDestroyShaderModule 进行销毁也可以存着备后用（比如重建管线之类）
     pContext->mainRenderPassPipelines.triangle.vertexShaderModule =    // 顶点着色器
         vwrpCreateShaderModule(pContext->device,
             pPipelineCreateInfo->vertexSpvFilePath);
@@ -436,7 +432,7 @@ static inline bool create_mainRP_triangle_pipeline(
     // VkVertexInputBindingDescription 和
     // VkVertexInputAttributeDescription
 
-    VkVertexInputBindingDescription vertexInputBindingDescription = 
+    VkVertexInputBindingDescription vertexBinding0Description = 
         get_vertex_data_input_binding_description(0);
 
     uint32_t vertexInputAttributeCount = 0;
@@ -451,13 +447,18 @@ static inline bool create_mainRP_triangle_pipeline(
     VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
     vertexInputStateInfo.sType = 
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateInfo.vertexBindingDescriptionCount   = 1; 
-    vertexInputStateInfo.pVertexBindingDescriptions      =
-        &vertexInputBindingDescription;
+    // 对于顶点数据用 Buffer 的绑定，这里规定该管线只绑定 1 个 VkBuffer
+    vertexInputStateInfo.vertexBindingDescriptionCount   = 1;
+    vertexInputStateInfo.pVertexBindingDescriptions      = &vertexBinding0Description;
     vertexInputStateInfo.vertexAttributeDescriptionCount = vertexInputAttributeCount;
     vertexInputStateInfo.pVertexAttributeDescriptions    =
         vertexInputAttributeDescriptions;
 
+    // 把顶点绑定信息记录在管线结构体中备用
+    pContext->mainRenderPassPipelines.triangle.vertexFirstBindingIndex =
+        vertexBinding0Description.binding;
+    pContext->mainRenderPassPipelines.triangle.vertexBindingCount      =
+        vertexInputStateInfo.vertexBindingDescriptionCount;
 
     // 3.（配置输入装配阶段）填写 VkPipelineInputAssemblyStateCreateInfo
     VkPipelineInputAssemblyStateCreateInfo vertexInputAssemblyInfo = {};
@@ -742,11 +743,13 @@ static void destroy_swapchain_related_resources(RendererContext* pContext)
 }
 
 
-BufferResource rctxCreateAndFillStaticBuffer(
+bool rctxCreateAndFillStaticBuffer(
     RendererContext*          pContext,
     VkBufferUsageFlagBits     usage,
     size_t                    dataSize,
-    const void*               pData
+    const void*               pData,
+    VkBuffer*                 outBuffer,
+    VmaAllocation*            outAllocation
 )
 {
     // 1.创建 HOST_VISIBLE 的暂存缓冲区
@@ -755,7 +758,7 @@ BufferResource rctxCreateAndFillStaticBuffer(
     stagingBufferCreateInfo.size        = dataSize;
     stagingBufferCreateInfo.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     stagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    
+
     VmaAllocationCreateInfo stagingBufferAllocationCreateInfo = {};
     stagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     stagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
@@ -776,12 +779,12 @@ BufferResource rctxCreateAndFillStaticBuffer(
         log_error("%s(): VMA has an error creating VkBuffer! "
             "Error Code(VkResult): %d", __func__, result);
 
-        return (BufferResource){0};
+        return false;
     }
 
     // 将数据写入暂存缓冲区
     memcpy(stagingBufferAllocationInfo.pMappedData, pData, dataSize);
-    
+
     // 非 coherent 内存，甲方写入后均应手动刷新同步至乙方内存
     vmaFlushAllocation(pContext->vmaAllocator, stagingAllocation, 0, dataSize);
 
@@ -810,13 +813,13 @@ BufferResource rctxCreateAndFillStaticBuffer(
     VmaAllocationCreateInfo vertexBufferAllocationCreateInfo = {};
     vertexBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-    VkBuffer vertexBuffer = VK_NULL_HANDLE;
-    VmaAllocation vertexBufferAllocation = VK_NULL_HANDLE;
+    VkBuffer staticBuffer = VK_NULL_HANDLE;
+    VmaAllocation staticBufferAllocation = VK_NULL_HANDLE;
     result = vmaCreateBuffer(pContext->vmaAllocator,
         &vertexBufferCreateInfo,
         &vertexBufferAllocationCreateInfo,
-        &vertexBuffer,
-        &vertexBufferAllocation,
+        &staticBuffer,
+        &staticBufferAllocation,
         NULL);
     if (result != VK_SUCCESS)
     {
@@ -824,13 +827,22 @@ BufferResource rctxCreateAndFillStaticBuffer(
             "Error Code(VkResult): %d", __func__, result);
 
         vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
-        
-        return (BufferResource){0};
+
+        return false;
     }
 
-    vmaSetAllocationName(pContext->vmaAllocator,
-        vertexBufferAllocation,
-        "VertexBuffer");
+    if (usage == VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+    {
+        vmaSetAllocationName(pContext->vmaAllocator,
+            staticBufferAllocation,
+            "VertexBuffer");
+    }
+    else if (usage == VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+    {
+        vmaSetAllocationName(pContext->vmaAllocator,
+            staticBufferAllocation,
+            "IndexBuffer");
+    }
 
     // 3.分配一个传输用命令缓冲区用于执行复制命令
     // 这里是在加锁前准备好需要的结构体和栅栏，避免在锁内分配，减少锁占用时间
@@ -880,20 +892,20 @@ BufferResource rctxCreateAndFillStaticBuffer(
 
         log_error("%s(): 开始录制命令缓冲区时发生错误！上传到设备本地内存失败。",
             __func__);
-        
-        vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
-        vmaDestroyBuffer(pContext->vmaAllocator, vertexBuffer, vertexBufferAllocation);
 
-        return (BufferResource){0};
+        vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
+        vmaDestroyBuffer(pContext->vmaAllocator, staticBuffer, staticBufferAllocation);
+
+        return false;
     }
-    
-        vkCmdCopyBuffer(commandBuffer, stagingBuffer, vertexBuffer, 1, &copyRegion);
+
+        vkCmdCopyBuffer(commandBuffer, stagingBuffer, staticBuffer, 1, &copyRegion);
 
     vwrpEndCommandBuffer("用于 VkBuffer 的复制（Staging 上传）", commandBuffer);
 
     // 5.可以上传到传输队列了
     vwrpQueueSubmit(pContext->transferQueue, 1, &submitInfo, fence);
-    
+
     // XXX: 提交到队列后就可以解锁了
     pthread_mutex_unlock(&pContext->transferMutex);
 
@@ -908,48 +920,61 @@ BufferResource rctxCreateAndFillStaticBuffer(
 
     // 命令缓冲区需要执行完毕了才能释放，这里重新加锁
     pthread_mutex_lock(&pContext->transferMutex);
-    
+
     vkFreeCommandBuffers(pContext->device,
         pContext->transferCommandPool,
         1,
         &commandBuffer);
-    
+
     pthread_mutex_unlock(&pContext->transferMutex);
 
     vwrpDestroyFence(pContext->device, fence);
 
     vmaDestroyBuffer(pContext->vmaAllocator, stagingBuffer, stagingAllocation);
 
-    BufferResource bufferHandle = {};
-    bufferHandle.buffer = vertexBuffer;
-    bufferHandle.allocation = vertexBufferAllocation;
+    *outBuffer = staticBuffer;
+    *outAllocation = staticBufferAllocation;
+    
+    VmaAllocationInfo allocationInfo = {};
+    vmaGetAllocationInfo(pContext->vmaAllocator,
+        staticBufferAllocation,
+        &allocationInfo);
+    
+    log_info("创建了一个静态 Buffer %p (name: %s, size: %d).",
+        staticBuffer,
+        allocationInfo.pName,
+        allocationInfo.size);
 
-    log_info("创建了一个静态 VertexBuffer: %p.", vertexBuffer);
-
-    return bufferHandle;
+    return true;
 }
 
 
-void rctxRequestDestroyBuffer(RendererContext* pContext, BufferResource bufferResource)
+void rctxRequestDestroyBuffer(
+    RendererContext*    pContext,
+    VkBuffer            buffer,
+    VmaAllocation       allocation
+)
 {
     // TODO: 用于请求销毁 Buffer 资源，实现延迟销毁
 }
 
 
-void rctxDestroyBuffer(RendererContext* pContext, BufferResource bufferResource)
+void rctxDestroyBuffer(
+    RendererContext*    pContext,
+    VkBuffer            buffer,
+    VmaAllocation       allocation
+)
 {
-    log_info("立即销毁 Buffer: %p.", bufferResource.buffer);
+    log_info("立即销毁 Buffer: %p.", buffer);
 
-    vmaDestroyBuffer(pContext->vmaAllocator,
-        bufferResource.buffer,
-        bufferResource.allocation);
+    vmaDestroyBuffer(pContext->vmaAllocator, buffer, allocation);
 }
 
 
 void rctxDrawFrame(
-    RendererContext*                    pContext,
-    bool                                isFramebufferResized,
-    MainRenderPassPipelinesDrawInfo*    pMainRenderPassPipelinesDrawInfo
+    RendererContext*                     pContext,
+    bool                                 isFramebufferResized,
+    MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo
 )
 {
     // 检查传入参数
@@ -1007,7 +1032,7 @@ void rctxDrawFrame(
     vkResetCommandBuffer(pContext->mainCommandBuffers[frameInFlightIndex], 0);
 
     // 3.录制主命令缓冲区，传入对应交换链图像索引（也对应帧缓冲区索引）
-    record_main_command_buffer(pContext,        // TODO: record_main_command_buffer()
+    record_main_command_buffer(pContext,
         frameInFlightIndex,
         swapchainImageIndex,
         pMainRenderPassPipelinesDrawInfo);
@@ -1020,18 +1045,17 @@ void rctxDrawFrame(
     };
 
     // 指定所有等待信号量对应的等待阶段
-    // “这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段
-    // 等待 交换链图像可用 信号量”
-    //（注：以上说法是错误的，实际上在渲染通道开始时，由于没有定义外部子通道依赖，隐式
-    // 的外部子通道依赖会使得引用图像的子通道（这里是引用了交换链图像）会在任何可能的时间点对
-    // 这些图像进行布局转换（Desc.initLayout 到 Ref.layout），所以从这个方面看，
-    // 这里的 waitOnStages 应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT 阶段才对，但这样设置
-    // 会导致不必要的空闲等待，毕竟在这里我们子通道前期阶段的执行确实不会用到交换链图像；
-    // 所以更好的方法是显式定义与外部子通道的子通道依赖，
-    // 告诉 Vulkan 我们该子通道的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真
-    // 正开始使用交换链图像的阶段）依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）
-    // 的 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段 —— 这个阶段的完成意味着请求的
-    // 交换链图像可用）
+    // “这里我们直到将要输出到颜色附件阶段时才会用到交换链图像，所以在此阶段等待交换链图像可用
+    // 信号量” —— 说法是错误的，实际上在渲染通道开始时，由于没有定义外部子通道依赖，隐式的外部
+    // 子通道依赖会使得引用图像的子通道（这里是引用了交换链图像）会在任何可能的时间点对这些图像
+    // 进行布局转换（Desc.initLayout 到 Ref.layout），所以从这个方面看，这里的 waitOnStages
+    // 应该是 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT 阶段才对，但这样设置会导致不必要的空闲等待，
+    // 毕竟在这里我们子通道前期阶段的执行确实不会用到交换链图像；所以更好的方法是显式定义与外部
+    // 子通道的子通道依赖，告诉 Vulkan 我们该子通道的
+    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段（真正开始使用交换链图像的阶段）
+    // 依赖于 VK_SUBPASS_EXTERNAL（特殊值，指代隐式的外部子通道）的
+    // VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 阶段 —— 这个阶段的完成意味着请求的交
+    // 换链图像可用）
     VkPipelineStageFlags waitOnStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
@@ -1098,14 +1122,21 @@ void rctxDrawFrame(
     frameInFlightIndex = (frameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+/// @brief 根据传入的已分类的绘制信息，按渲染通道依次录制子通道（绑定、绘制），该函数的录制包含
+/// 整一帧的所有工作
+///
+/// @param frameInFlightIndex 可用的主命令缓冲区索引（作录制目标）
+/// @param swapchainFramebufferIndex 可用的交换链帧缓冲区索引（作渲染目标）
+/// @param pMainRenderPassPipelinesDrawInfo 主 RenderPass 的所有管线绘制信息
+///
+/// @return 发生错误时返回 `false`
 static bool record_main_command_buffer(
-    RendererContext*                    pContext,
-    uint32_t                            frameInFlightIndex,
-    uint32_t                            swapchainFramebufferIndex,
-//  TODO: 设计某种 DrawInfo，让调用者传入必要信息，例如：
-    MainRenderPassPipelinesDrawInfo*    pMainRenderPassPipelinesDrawInfo
-//  MainRenderPassSkyPipelineDrawInfo*   pMainRenderPassSkyPipelineDrawInfo;
-//  DebugRenderPassLinePipelineDrawInfo* pDebugRenderPassLinePipelineDrawInfo;
+    RendererContext*                     pContext,
+    uint32_t                             frameInFlightIndex,
+    uint32_t                             swapchainFramebufferIndex,
+//  TODO: 设计某种 PipelinesDrawInfo，让调用者以渲染通道为单位，传入必要子管线绘制信息，例如：
+    MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo
+//  DebugRenderPassPipelinesDrawInfo*    pDebugRenderPassPipelinesDrawInfo
 )
 {
     char* label = "main command buffer";
@@ -1121,8 +1152,6 @@ static bool record_main_command_buffer(
 
     if (!vwrpBeginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
         return false;
-
-    // TODO: 根据传入的已分类的顶点缓冲区，按类别依次录制渲染（子）通道（绑定、绘制），一次录制包含整一帧的所有工作
 
     // 2.开始录制渲染通道
     VkRenderPassBeginInfo renderPassBeginInfo = {};
@@ -1162,33 +1191,70 @@ static bool record_main_command_buffer(
         scissor.extent   = pContext->swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        // 2.3.为绑定管线绑定顶点缓冲区
-        vkCmdBindVertexBuffers(commandBuffer,
-            0,  // 起始绑定索引，管线规定的，不得乱写
-            1,  // 绑定数 (起始往下)，不得乱写
-            // Buffer 数组，个数对应绑定数，也不得乱写
-            &pMainRenderPassPipelinesDrawInfo->triangle.vertexBufferInfo.buffer,
-            // Buffer 数组的 offset 数组，个数对应绑定数，也不得乱写
-            &pMainRenderPassPipelinesDrawInfo->triangle.vertexBufferInfo.offset);
-
-        // 2.4.Draw Call
         for (int i = 0;
-             i < pMainRenderPassPipelinesDrawInfo->
-                     triangle.vertexBufferInfo.drawItemCount;
+             i < pMainRenderPassPipelinesDrawInfo->triangle.buffersBindingCount;
              i++)
         {
-            vkCmdDraw(commandBuffer,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.vertexBufferInfo.pDrawItemInfos[i].vertexCount,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.vertexBufferInfo.pDrawItemInfos[i].instanceCount,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.vertexBufferInfo.pDrawItemInfos[i].firstVertex,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.vertexBufferInfo.pDrawItemInfos[i].firstInstance);
-        }
+            // 2.3.为绑定管线绑定顶点缓冲区
+            vkCmdBindVertexBuffers(commandBuffer,
+                // 起始绑定索引，管线规定的，不得乱写
+                pContext->mainRenderPassPipelines.triangle.vertexFirstBindingIndex,
+                // 绑定数 (起始往下)，不得乱写
+                pContext->mainRenderPassPipelines.triangle.vertexBindingCount,
+                // Buffer 数组，个数对应绑定数，也不得乱写
+                &pMainRenderPassPipelinesDrawInfo->
+                    triangle.pBindingBuffersInfos[i].vertexBuffer,
+                // Buffer 数组的 offset 数组，个数对应绑定数，也不得乱写
+                &pMainRenderPassPipelinesDrawInfo->
+                    triangle.pBindingBuffersInfos[i].vertexOffset);
 
-        // vkCmdDraw(commandBuffer, vertexDrawCount, 1, 0, 0);
+            // 绑定索引
+            vkCmdBindIndexBuffer(commandBuffer,
+                pMainRenderPassPipelinesDrawInfo->
+                    triangle.pBindingBuffersInfos[i].indexBuffer,
+                pMainRenderPassPipelinesDrawInfo->
+                    triangle.pBindingBuffersInfos[i].indexOffset,
+                VK_INDEX_TYPE_UINT32);
+
+            // 2.4.Draw Call
+
+            // 按 PipelineBindingBuffersInfo 中的 drawItemCount 次调用 vkCmdDraw()
+            for (int j = 0;
+                 j < pMainRenderPassPipelinesDrawInfo->
+                         triangle.pBindingBuffersInfos[i].drawItemCount;
+                 j++)
+            {
+                vkCmdDraw(commandBuffer,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pDrawItemInfos[j].vertexCount,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pDrawItemInfos[j].instanceCount,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pDrawItemInfos[j].firstVertex,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pDrawItemInfos[j].firstInstance);
+            }
+
+            // 按 PipelineBindingBuffersInfo 中的 indexedDrawItemCount 次调用
+            // vkCmdDrawIndexed()
+            for (int k = 0;
+                 k < pMainRenderPassPipelinesDrawInfo->
+                    triangle.pBindingBuffersInfos[i].indexedDrawItemCount;
+                 k++)
+            {
+                vkCmdDrawIndexed(commandBuffer,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pIndexedDrawItemInfos[k].indexCount,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pIndexedDrawItemInfos[k].instanceCount,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pIndexedDrawItemInfos[k].firstIndex,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pIndexedDrawItemInfos[k].vertexOffset,
+                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
+                        pIndexedDrawItemInfos[k].firstInstance);
+            }
+        }
 
     // 对于目前仅绘制三角形的 mainRenderPass，我们只有一个 subpass，
     // 所以现在可以结束 RenderPass 了
