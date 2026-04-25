@@ -1219,7 +1219,8 @@ static bool record_main_command_buffer(
             // 2.4.Draw Call
 
             // 按 PipelineBindingBuffersInfo 中的 drawItemCount 次调用 vkCmdDraw()
-            for (int j = 0;
+            int j = 0;
+            for (;
                  j < pMainRenderPassPipelinesDrawInfo->
                          triangle.pBindingBuffersInfos[i].drawItemCount;
                  j++)
@@ -1237,22 +1238,22 @@ static bool record_main_command_buffer(
 
             // 按 PipelineBindingBuffersInfo 中的 indexedDrawItemCount 次调用
             // vkCmdDrawIndexed()
-            for (int k = 0;
-                 k < pMainRenderPassPipelinesDrawInfo->
+            for (j = 0;
+                 j < pMainRenderPassPipelinesDrawInfo->
                     triangle.pBindingBuffersInfos[i].indexedDrawItemCount;
-                 k++)
+                 j++)
             {
                 vkCmdDrawIndexed(commandBuffer,
                     pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[k].indexCount,
+                        pIndexedDrawItemInfos[j].indexCount,
                     pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[k].instanceCount,
+                        pIndexedDrawItemInfos[j].instanceCount,
                     pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[k].firstIndex,
+                        pIndexedDrawItemInfos[j].firstIndex,
                     pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[k].vertexOffset,
+                        pIndexedDrawItemInfos[j].vertexOffset,
                     pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[k].firstInstance);
+                        pIndexedDrawItemInfos[j].firstInstance);
             }
         }
 
