@@ -1,26 +1,23 @@
 #include "queue_family_indices.h"
 
 
-static QueueFamilyIndices init_QueueFamilyIndices()
-{
-    // 初始化，-1 表未找到
-    QueueFamilyIndices queueFamilyIndices = 
-    {
-        .graphicsSupport        = -1,   
-        .presentationSupport    = -1
-    };
-
-    return queueFamilyIndices;
-}
-
-QueueFamilyIndices find_queue_families(
+void find_queue_families(
     VkPhysicalDevice    physicalDevice,
-    VkSurfaceKHR        surface
+    VkSurfaceKHR        surface,
+    QueueFamilyIndices* pFamilyIndices
 )
 {
-    QueueFamilyIndices queueFamilyIndices = init_QueueFamilyIndices();
+    if (!pFamilyIndices)
+    {
+        log_error("%s(): 输出参数传入了无效地址，函数退出.", __func__);
 
-    // 1.查询队列族 Properties
+        return;
+    }
+
+    // 初始化所有索引字段为 -1（该值表示未找到可用的族索引）
+    memset(pFamilyIndices, 0xFF, sizeof(QueueFamilyIndices));
+
+    // 1.传入物理设备查询其队列族 Properties
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, 
         &queueFamilyCount, 
@@ -31,28 +28,38 @@ QueueFamilyIndices find_queue_families(
         &queueFamilyCount,
         queueFamilies);
     
-    // 2.遍历队列族 Properties
+    // 2.遍历队列族 Properties（按最后支持相关功能 BIT 的族来填索引）
     for (int i = 0; i < queueFamilyCount; i++)
     {
+        // 如果队列族一个队列都没有
         if (queueFamilies[i].queueCount < 1)
             continue;
         
         // 检查其队列 flags
         if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            queueFamilyIndices.graphicsSupport = i;
+            pFamilyIndices->graphicsSupport = i;
+
+        if (queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+            pFamilyIndices->transferSupport = i;
 
         // 检查其是否支持呈现
         VkBool32 supportsPresentation = VK_FALSE;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice,
-            i,
-            surface,
-            &supportsPresentation);
+        VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice,
+                              i,
+                              surface,
+                              &supportsPresentation);
+        if (result != VK_SUCCESS)
+        {
+            log_error("%s(): An error occurred when calling "
+                "vkGetPhysicalDeviceSurfaceSupportKHR()! "
+                "Error Code(VkResult): %d", result);
+
+            continue;
+        }
+
         if (supportsPresentation == VK_TRUE)
-            queueFamilyIndices.presentationSupport = i;
+            pFamilyIndices->presentationSupport = i;
     }
-
-    return queueFamilyIndices;
-
 }
 
 bool has_queue_family_supports_both_graphics_and_presentation(

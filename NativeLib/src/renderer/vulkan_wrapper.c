@@ -32,7 +32,7 @@ static void get_driver_version_string(
 static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath);
 
 
-VkInstance createInstance(void)
+VkInstance vwrpCreateInstance(void)
 {
     // 0.检查验证层是否开启并可用
     if (enableValidationLayers && !check_instance_layer_properties())
@@ -94,7 +94,7 @@ VkInstance createInstance(void)
         return VK_NULL_HANDLE;
     }
 
-    log_info("成功创建了一个 VkInstance！");
+    log_trace("vwrp: 成功创建了一个 VkInstance！");
 
     return instance;
 }
@@ -192,15 +192,15 @@ static void check_instance_extension_properties(void)
 }
 
 
-void destroyInstance(VkInstance instance)
+void vwrpDestroyInstance(VkInstance instance)
 {   
     vkDestroyInstance(instance, NULL);
 
-    log_trace("调用了 vkDestroyInstance！");
+    log_trace("vwrp: 调用了 vkDestroyInstance！");
 }
 
 
-VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
+VkSurfaceKHR vwrpCreateSurface(VkInstance instance, GLFWwindow* window)
 {
     VkSurfaceKHR surface = VK_NULL_HANDLE;
 
@@ -212,21 +212,21 @@ VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window)
         return VK_NULL_HANDLE;
     }
 
-    log_info("成功创建了一个 VkSurfaceKHR！");
+    log_trace("vwrp: 成功创建了一个 VkSurfaceKHR！");
 
     return surface;
 }
 
 
-void destroySurface(VkInstance instance, VkSurfaceKHR surface)
+void vwrpDestroySurface(VkInstance instance, VkSurfaceKHR surface)
 {
     vkDestroySurfaceKHR(instance, surface, NULL);
 
-    log_trace("调用了 vkDestroySurfaceKHR！");
+    log_trace("vwrp: 调用了 vkDestroySurfaceKHR！");
 }
 
 
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
+VkPhysicalDevice vwrpPickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
 {
     // 1.查询可用的物理设备
     uint32_t deviceCount = 0;
@@ -246,6 +246,8 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     for (int i = 0; i < deviceCount; i++)
     {
+        log_debug("Physical Device[%d]:", i);
+
         if (is_physical_device_suitable(physicalDevices[i], surface))
         {
             physicalDevice = physicalDevices[i];
@@ -260,7 +262,7 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface)
         return VK_NULL_HANDLE;
     }
 
-    log_info("成功选取了一个物理设备！");
+    log_trace("vwrp: 成功选取了一个物理设备！");
 
     dump_physical_device_properties(physicalDevice);
 
@@ -282,8 +284,8 @@ static bool is_physical_device_suitable(
 
     bool extensionsSupported = check_device_extension_properties(physicalDevice);
 
-    QueueFamilyIndices queueFamilyIndices = 
-        find_queue_families(physicalDevice, surface);
+    QueueFamilyIndices queueFamilyIndices = {}; 
+    find_queue_families(physicalDevice, surface, &queueFamilyIndices);
 
     bool swapchainSupported = false;
     if (extensionsSupported)
@@ -300,10 +302,28 @@ static bool is_physical_device_suitable(
         free_swapchain_support_details(&swapchainSupportDetails);
     }
 
-    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU    // 是否独显
+    log_debug("DiscreteGPU: %s",
+        properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ?
+        "true" : "false");
+
+    log_debug("ExtensionsSupported: %s", extensionsSupported ? "true" : "false");
+
+    log_debug("QueueFamilyGraphicsSupport: %s",
+        queueFamilyIndices.graphicsSupport >= 0 ? "true" : "false");
+
+    log_debug("QueueFamilyPresentationSupport: %s",
+        queueFamilyIndices.presentationSupport >= 0 ? "true" : "false");
+
+    log_debug("QueueFamilyTransferSupport: %s",
+        queueFamilyIndices.transferSupport >= 0 ? "true" : "false");
+
+    log_debug("SwapchainSupport: %s", swapchainSupported ? "true" : "false");
+
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU   // 是否独显
         && extensionsSupported                                  // 是否支持请求的扩展
-        && queueFamilyIndices.graphicsSupport >= 0              // 是否队列支持图形
-        && queueFamilyIndices.presentationSupport >= 0          // 是否队列族支持呈现
+        && queueFamilyIndices.graphicsSupport >= 0              // 是否有队列族支持图形
+        && queueFamilyIndices.presentationSupport >= 0          // 是否有队列族支持呈现
+        && queueFamilyIndices.transferSupport >= 0              // 是否有队列族支持传输
         && swapchainSupported;                  // 是否满足给定 Surface 的交换链创建要求
 }
 
@@ -469,83 +489,250 @@ static void get_driver_version_string(
 }
 
 
-VkDevice createLogicalDevice(
+VkDevice vwrpCreateLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    VkQueue*            graphicsQueue,
-    VkQueue*            presentationQueue
+    uint32_t*           pGraphicsQueueFamilyIndex,
+    VkQueue*            pGraphicsQueue,
+    uint32_t*           pPresentationQueueFamilyIndex,
+    VkQueue*            pPresentationQueue,
+    uint32_t*           pTransferQueueFamilyIndex,
+    VkQueue*            pTransferQueue
 )
 {
+    if (!pGraphicsQueueFamilyIndex
+        || !pGraphicsQueue
+        || !pTransferQueueFamilyIndex
+        || !pTransferQueue
+        || !pPresentationQueueFamilyIndex
+        || !pPresentationQueue)
+    {
+        log_error("%s(): 函数参数错误！输出参数不能传入 NULL 地址！", __func__);
+
+        return VK_NULL_HANDLE;
+    }
+
+    // 获取物理设备所有队列族属性，下面要用来查询队列族支持的队列数
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, 
+        &queueFamilyCount, 
+        NULL);
+    
+    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice,
+        &queueFamilyCount,
+        queueFamilies);
+
+    // 获取功能最后可用队列族索引
+    QueueFamilyIndices queueFamilyIndices = {};
+    find_queue_families(physicalDevice, surface, &queueFamilyIndices);
+
+    // 检查物理设备是否支持专门的传输队列
+    if (queueFamilyIndices.graphicsSupport == queueFamilyIndices.transferSupport
+        && queueFamilies[queueFamilyIndices.graphicsSupport].queueCount == 1)
+    {
+        log_error("%s(): 检测到传入的物理设备不支持创建独立的传输用队列，"
+            "程序无法继续运行！", __func__);
+
+        *pGraphicsQueueFamilyIndex = -1;
+        *pTransferQueueFamilyIndex = -1;
+        *pPresentationQueueFamilyIndex = -1;
+
+        return VK_NULL_HANDLE;
+    }
+
     int queueFamilyIndex = -1;
-    bool useSingleQueue = 
+    bool useSingleQueueForGP = 
         has_queue_family_supports_both_graphics_and_presentation(physicalDevice,
             surface,
             &queueFamilyIndex);
-    
-    VkDeviceQueueCreateInfo queueCreateInfo = {};   // 单队列族单队列
 
-    VkDeviceQueueCreateInfo queueCreateInfoG = {};  // 双队列族双队列
-    VkDeviceQueueCreateInfo queueCreateInfoP = {};  //
-    VkDeviceQueueCreateInfo queueCreateInfos[2];
-    QueueFamilyIndices queueFamilyIndices = 
-                find_queue_families(physicalDevice, surface);
+    // 因为不确定设备对队列的支持程度如何，比如有时候单队列族可能只支持 1 个队列！
+    // 所以这里需要考虑以下几个情况（建立在设备支持创建独立的传输用队列这个假设上）
 
-    float queuePriorities = 1.0f;
+    // 情况一：有同时支持图形和呈现的队列族，且支持创建 2 个及以上数量队列时
+    VkDeviceQueueCreateInfo queueCreateInfoGP_T = {};  // 一个队列族 2 个队列（GP、T）
+
+    // 情况二：有同时支持图形和呈现的队列族，但只支持创建 1 个队列时
+    VkDeviceQueueCreateInfo queueCreateInfoGP = {};    // 一队列族 1 个队列（GP）
+    VkDeviceQueueCreateInfo queueCreateInfoT = {};     // 另一个队列族 1 个队列（T）
+
+    // 情况三：有支持图形，但不支持呈现的队列族，且支持创建 2 个及以上数量队列时
+    VkDeviceQueueCreateInfo queueCreateInfoG_T = {};   // 一队列族 2 个队列（G、T）
+    VkDeviceQueueCreateInfo queueCreateInfoP = {};     // 另一队列族 1 个队列（P）
+
+    // 情况四：有支持图形，但不支持呈现的队列族，而且还只支持创建 1 个队列时
+    VkDeviceQueueCreateInfo queueCreateInfoG = {};
+    // VkDeviceQueueCreateInfo queueCreateInfoP = {}; 第三种情况已经定义了这个，直接用
+    // VkDeviceQueueCreateInfo queueCreateInfoT = {}; 第二种情况已经定义了这个，直接用
+
+    float queuePriorities[2] = {1.0f, 1.0f};
+    float queuePriority = 1.0f;
+
+    VkDeviceQueueCreateInfo queueCreateInfos[3];
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
 
     uint32_t requiredDeviceExtensionCount = 
         sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
 
+    // 统一的设备创建信息
     VkDeviceCreateInfo createInfo = {};
 
-    if (useSingleQueue)
+    // 下面获取队列时要用到的 queueIndex
+    uint32_t queueIndexG = 0;
+    uint32_t queueIndexP = 0;
+    uint32_t queueIndexT = 0;
+
+    if (useSingleQueueForGP)
     {
-        // 1.指定创建队列要用到的 VkDeviceQueueCreateInfo
-        queueCreateInfo.sType               = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex    = queueFamilyIndex;
-        queueCreateInfo.queueCount          = 1;
-        queueCreateInfo.pQueuePriorities    = &queuePriorities;
+        // 情况一（查询图形队列族支持的队列数 >=2 的）
+        if (queueFamilies[queueFamilyIndex].queueCount >= 2)
+        {
+            // 1.指定创建队列要用到的 VkDeviceQueueCreateInfo
+            // (GRAPHICS & Presentation + TRANSFER)
+            queueCreateInfoGP_T.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoGP_T.queueFamilyIndex = queueFamilyIndex;
+            queueCreateInfoGP_T.queueCount       = 2;
+            queueCreateInfoGP_T.pQueuePriorities = queuePriorities;
 
-        // 2.指定 VkPhysicalDeviceFeatures
-        // 默认
+            // 2.指定 VkPhysicalDeviceFeatures
+            // 默认
 
-        // 3.指定 VkDeviceCreatInfo
-        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos        = &queueCreateInfo;
-        createInfo.queueCreateInfoCount     = 1;
-        createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
-        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
+            // 3.指定 VkDeviceCreatInfo
+            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.queueCreateInfoCount    = 1;
+            createInfo.pQueueCreateInfos       = &queueCreateInfoGP_T;
+            createInfo.pEnabledFeatures        = &deviceFeatures;
+            createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+            createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
+
+            queueIndexG = 0;
+            queueIndexP = 0;
+            queueIndexT = 1;
+
+            *pGraphicsQueueFamilyIndex     = queueCreateInfoGP_T.queueFamilyIndex;
+            *pPresentationQueueFamilyIndex = queueCreateInfoGP_T.queueFamilyIndex;
+            *pTransferQueueFamilyIndex     = queueCreateInfoGP_T.queueFamilyIndex;
+        }
+        // 情况二（查询图形队列族支持的队列数 ==1 的）
+        else
+        {
+            // (GRAPHICS & Presentation)
+            queueCreateInfoGP.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoGP.queueFamilyIndex = queueFamilyIndex;
+            queueCreateInfoGP.queueCount       = 1;
+            queueCreateInfoGP.pQueuePriorities = &queuePriority;
+
+            // (TRANSFER)
+            queueCreateInfoT.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoT.queueFamilyIndex = queueFamilyIndices.transferSupport;
+            queueCreateInfoT.queueCount       = 1;
+            queueCreateInfoT.pQueuePriorities = &queuePriority;
+
+            queueCreateInfos[0] = queueCreateInfoGP;
+            queueCreateInfos[1] = queueCreateInfoT;
+
+            // 指定 VkPhysicalDeviceFeatures
+            // 默认
+
+            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.queueCreateInfoCount    = 2;
+            createInfo.pQueueCreateInfos       = queueCreateInfos;
+            createInfo.pEnabledFeatures        = &deviceFeatures;
+            createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+            createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
+
+            queueIndexG = 0;
+            queueIndexP = 0;
+            queueIndexT = 0;
+
+            *pGraphicsQueueFamilyIndex     = queueCreateInfoGP.queueFamilyIndex;
+            *pPresentationQueueFamilyIndex = queueCreateInfoGP.queueFamilyIndex;
+            *pTransferQueueFamilyIndex     = queueCreateInfoT.queueFamilyIndex;
+        }
     }
     else
     {
-        // (GRAPHICS)
-        queueCreateInfoG.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfoG.queueFamilyIndex   = queueFamilyIndices.graphicsSupport;
-        queueCreateInfoG.queueCount         = 1;
-        float queuePrioritiesG = 1.0f;
-        queueCreateInfoG.pQueuePriorities   = &queuePrioritiesG;
+        // 情况三 图形呈现不在同一队列族，查询图形队列族支持的队列数 >=2 的
+        if (queueFamilies[queueFamilyIndices.graphicsSupport].queueCount >= 2)
+        {
+            // (GRAPHICS + TRANSFER)
+            queueCreateInfoG_T.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoG_T.queueFamilyIndex = queueFamilyIndices.graphicsSupport;
+            queueCreateInfoG_T.queueCount       = 2;
+            queueCreateInfoG_T.pQueuePriorities = queuePriorities;
 
-        // (Presentation)
-        queueCreateInfoP.sType              = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfoP.queueFamilyIndex   = queueFamilyIndices.presentationSupport;
-        queueCreateInfoP.queueCount         = 1;
-        float queuePrioritiesP = 1.0f;
-        queueCreateInfoP.pQueuePriorities   = &queuePrioritiesP;
+            // (Presentation)
+            queueCreateInfoP.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoP.queueFamilyIndex = queueFamilyIndices.presentationSupport;
+            queueCreateInfoP.queueCount       = 1;
+            queueCreateInfoP.pQueuePriorities = &queuePriority;
 
-        queueCreateInfos[0] = queueCreateInfoG;
-        queueCreateInfos[1] = queueCreateInfoP;
+            queueCreateInfos[0] = queueCreateInfoG_T;
+            queueCreateInfos[1] = queueCreateInfoP;
 
-        // VkPhysicalDeviceFeatures
-        // 默认
+            // VkPhysicalDeviceFeatures
+            // 默认
 
-        createInfo.sType                    = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos        = queueCreateInfos;
-        createInfo.queueCreateInfoCount     = 2;
-        createInfo.pEnabledFeatures         = &deviceFeatures;
-        createInfo.enabledExtensionCount    = requiredDeviceExtensionCount;
-        createInfo.ppEnabledExtensionNames  = requiredDeviceExtensions;
+            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.queueCreateInfoCount    = 2;
+            createInfo.pQueueCreateInfos       = queueCreateInfos;
+            createInfo.pEnabledFeatures        = &deviceFeatures;
+            createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+            createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
+
+            queueIndexG = 0;
+            queueIndexP = 0;
+            queueIndexT = 1;
+
+            *pGraphicsQueueFamilyIndex     = queueCreateInfoG_T.queueFamilyIndex;
+            *pPresentationQueueFamilyIndex = queueCreateInfoP.queueFamilyIndex;
+            *pTransferQueueFamilyIndex     = queueCreateInfoG_T.queueFamilyIndex;
+        }
+        // 情况四 图形呈现不在同一队列族，查询图形队列族支持的队列数 ==1 的
+        else
+        {
+            // (GRAPHICS)
+            queueCreateInfoG.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoG.queueFamilyIndex = queueFamilyIndices.graphicsSupport;
+            queueCreateInfoG.queueCount       = 1;
+            queueCreateInfoG.pQueuePriorities = &queuePriority;
+
+            // (Presentation)
+            queueCreateInfoP.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoP.queueFamilyIndex = queueFamilyIndices.presentationSupport;
+            queueCreateInfoP.queueCount       = 1;
+            queueCreateInfoP.pQueuePriorities = &queuePriority;
+
+            // (TRANSFER)
+            queueCreateInfoT.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfoT.queueFamilyIndex = queueFamilyIndices.transferSupport;
+            queueCreateInfoT.queueCount       = 1;
+            queueCreateInfoT.pQueuePriorities = &queuePriority;
+
+            queueCreateInfos[0] = queueCreateInfoG;
+            queueCreateInfos[1] = queueCreateInfoP;
+            queueCreateInfos[2] = queueCreateInfoT;
+
+            // VkPhysicalDeviceFeatures
+            // 默认
+
+            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+            createInfo.queueCreateInfoCount    = 3;
+            createInfo.pQueueCreateInfos       = queueCreateInfos;
+            createInfo.pEnabledFeatures        = &deviceFeatures;
+            createInfo.enabledExtensionCount   = requiredDeviceExtensionCount;
+            createInfo.ppEnabledExtensionNames = requiredDeviceExtensions;
+
+            queueIndexG = 0;
+            queueIndexP = 0;
+            queueIndexT = 0;
+
+            *pGraphicsQueueFamilyIndex     = queueCreateInfoG.queueFamilyIndex;
+            *pPresentationQueueFamilyIndex = queueCreateInfoP.queueFamilyIndex;
+            *pTransferQueueFamilyIndex     = queueCreateInfoT.queueFamilyIndex;
+        }
     }
 
     // 4.创建逻辑设备
@@ -555,52 +742,92 @@ VkDevice createLogicalDevice(
     {
         log_error("Failed to create a VkDevice! Error Code(VkResult): %d", result);
 
+        *pGraphicsQueueFamilyIndex = -1;
+        *pTransferQueueFamilyIndex = -1;
+        *pPresentationQueueFamilyIndex = -1;
+
+        *pGraphicsQueue = VK_NULL_HANDLE;
+        *pTransferQueue = VK_NULL_HANDLE;
+        *pPresentationQueue = VK_NULL_HANDLE;
+
         return VK_NULL_HANDLE;
     }
 
-    log_info("成功创建了一个 VkDevice！");
-
-    // 5.out 参数形式返回创建好的 VkQueue
-    if (useSingleQueue)
-    {
-        vkGetDeviceQueue(device, queueFamilyIndex, 0, graphicsQueue);
-        vkGetDeviceQueue(device, queueFamilyIndex, 0, presentationQueue);
-    }
-    else
-    {
-        vkGetDeviceQueue(device, 
-            queueFamilyIndices.graphicsSupport, 
-            0, 
-            graphicsQueue);
-        vkGetDeviceQueue(device, 
-            queueFamilyIndices.presentationSupport, 
-            0, 
-            presentationQueue);
-    }
-
-    log_info("获取了一个 VkQueue (for graphics).");
-    log_info("获取了一个 VkQueue (for presentation).");
+    log_trace("vwrp: 成功创建了一个 VkDevice！");
 
 #ifdef DEBUG
-    if (useSingleQueue)
-        log_debug("Using Single Queue: true (Queue Family Index: %d)", queueFamilyIndex);
+    if (useSingleQueueForGP)
+        log_debug("Using Single Queue For Graphics And Presentation: "
+            "true (Queue Family Index: %d)", queueFamilyIndex);
     else
-        log_debug("Using Single Queue: false");
+        log_debug("Using Single Queue For Graphics And Presentation: false");
 #endif
+
+    // 5.out 参数形式返回创建好的 VkQueue
+    vkGetDeviceQueue(device, *pGraphicsQueueFamilyIndex, queueIndexG, pGraphicsQueue);
+    log_trace("vwrp: 获取了一个 VkQueue (%p, for Graphics, Queue Family Index: %d)",
+        *pGraphicsQueue, *pGraphicsQueueFamilyIndex);
+
+    vkGetDeviceQueue(device,
+        *pPresentationQueueFamilyIndex,
+        queueIndexP,
+        pPresentationQueue);
+    log_trace("vwrp: 获取了一个 VkQueue (%p, for Persentation, Queue Family Index: %d)",
+        *pPresentationQueue, *pPresentationQueueFamilyIndex);
+
+    vkGetDeviceQueue(device, *pTransferQueueFamilyIndex, queueIndexT, pTransferQueue);
+    log_trace("vwrp: 获取了一个 VkQueue (%p, for Transfer, Queue Family Index: %d)",
+        *pTransferQueue, *pTransferQueueFamilyIndex);
 
     return device;
 }
 
 
-void destroyLogicalDevice(VkDevice device)
+void vwrpDestroyLogicalDevice(VkDevice device)
 {
     vkDestroyDevice(device, NULL);
 
-    log_trace("调用了 vkDestroyDevice！");
+    log_trace("vwrp: 调用了 vkDestroyDevice！");
 }
 
 
-VkSwapchainKHR createSwapchain(
+VmaAllocator vwrpCreateVmaAllocator(
+    VkInstance          instance,
+    VkPhysicalDevice    physicalDevice,
+    VkDevice            device
+)
+{
+    VmaAllocator allocator = VK_NULL_HANDLE;
+
+    VmaAllocatorCreateInfo createInfo = {};
+    createInfo.instance         = instance;
+    createInfo.physicalDevice   = physicalDevice;
+    createInfo.device           = device;
+    createInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+    VkResult result = vmaCreateAllocator(&createInfo, &allocator);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VmaAllocator! Error Code(VkResult): %d", result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_trace("vwrp: 成功创建了一个 VmaAllocator！");
+
+    return allocator;
+}
+
+
+void vwrpDestroyVmaAllocator(VmaAllocator allocator)
+{
+    vmaDestroyAllocator(allocator);
+
+    log_trace("vwrp: 调用了 vmaDestroyAllocator！");
+}
+
+
+VkSwapchainKHR vwrpCreateSwapchain(
     GLFWwindow*         window,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
@@ -673,8 +900,8 @@ VkSwapchainKHR createSwapchain(
     createInfo.clipped                  = VK_TRUE;  // 启用窗口遮挡裁切
 
     // 2.5.处理 ImageSharingMode
-    QueueFamilyIndices queueFamilyIndices = 
-        find_queue_families(physicalDevice, surface);
+    QueueFamilyIndices queueFamilyIndices = {};
+    find_queue_families(physicalDevice, surface, &queueFamilyIndices);
 
     uint32_t pQueueFamilyIndices[] = 
         {queueFamilyIndices.graphicsSupport, queueFamilyIndices.presentationSupport};
@@ -760,13 +987,13 @@ VkSwapchainKHR createSwapchain(
     *pSwapchainImageFormat = surfaceFormat.format;
     *pSwapchainExtent = extent;
 
-    log_info("成功创建了一个 VkSwapchainKHR！");
+    log_trace("vwrp: 成功创建了一个 VkSwapchainKHR！");
 
     return swapchain;
 }
 
 
-void destroySwapchain(
+void vwrpDestroySwapchain(
     VkDevice        device, 
     VkSwapchainKHR  swapchain, 
     VkImage**       ppSwapchainImages
@@ -774,18 +1001,18 @@ void destroySwapchain(
 {
     vkDestroySwapchainKHR(device, swapchain, NULL);
 
-    // 释放在 createSwapchain() 中分配的交换链图像数组堆内存
+    // 释放在 vwrpCreateSwapchain() 中分配的交换链图像数组堆内存
     if(ppSwapchainImages)
     {
         free(*ppSwapchainImages);
         *ppSwapchainImages = NULL;
     }
 
-    log_trace("调用了 vkDestroySwapchainKHR！");
+    log_trace("vwrp: 调用了 vkDestroySwapchainKHR！");
 }
 
 
-VkImageView* createSwapchainImageViews(
+VkImageView* vwrpCreateSwapchainImageViews(
     VkDevice        device,
     VkFormat        swapchainImageFormat,
     uint32_t        swapchainImageCount,
@@ -849,14 +1076,14 @@ VkImageView* createSwapchainImageViews(
             return VK_NULL_HANDLE;
         }
 
-        log_info("创建了一个 VkImageView(s, %u) for swapchain.", i);
+        log_trace("vwrp: 创建了一个 VkImageView(s, %u) for swapchain.", i);
     }
 
     return pSwapchainImageViews;
 }
 
 
-void destroySwapchainImageViews(
+void vwrpDestroySwapchainImageViews(
     VkDevice        device,
     uint32_t        swapchainImageCount,
     VkImageView**   ppSwapchainImageViews   // 要销毁的图像视图的数组的地址
@@ -875,7 +1102,7 @@ void destroySwapchainImageViews(
     {
         vkDestroyImageView(device, (*ppSwapchainImageViews)[i], NULL);
 
-        log_trace("调用了 vkDestroyImageView(s，%u) for swapchian！", i);
+        log_trace("vwrp: 调用了 vkDestroyImageView(s，%u) for swapchian！", i);
     }
 
     // 释放数组占用的内存
@@ -886,7 +1113,7 @@ void destroySwapchainImageViews(
 }
 
 
-VkCommandPool createCommandPool(
+VkCommandPool vwrpCreateCommandPool(
     VkDevice                        device,
     const VkCommandPoolCreateInfo*  pCreateInfo
 )
@@ -901,21 +1128,21 @@ VkCommandPool createCommandPool(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkCommandPool.");
+    log_trace("vwrp: 创建了一个 VkCommandPool.");
 
     return commandPool;
 }
 
 
-void destroyCommandPool(VkDevice device, VkCommandPool commandPool)
+void vwrpDestroyCommandPool(VkDevice device, VkCommandPool commandPool)
 {
     vkDestroyCommandPool(device, commandPool, NULL);
 
-    log_trace("调用了 vkDestroyCommandPool！");
+    log_trace("vwrp: 调用了 vkDestroyCommandPool！");
 }
 
 
-void allocateCommandBuffers(
+void vwrpAllocateCommandBuffers(
     VkDevice                            device,
     const VkCommandBufferAllocateInfo*  pAllocateInfo,
     VkCommandBuffer*                    pCommandBuffers
@@ -942,11 +1169,11 @@ void allocateCommandBuffers(
         return;
     }
 
-    log_info("分配了 %u 个 VkCommandBuffer.", pAllocateInfo->commandBufferCount);
+    log_trace("vwrp: 分配了 %u 个 VkCommandBuffer.", pAllocateInfo->commandBufferCount);
 }
 
 
-bool beginCommandBuffer(
+bool vwrpBeginCommandBuffer(
     const char*                     label,
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo  *pBeginInfo
@@ -962,13 +1189,11 @@ bool beginCommandBuffer(
         return false;
     }
 
-    // log_trace("开始录制 VkCommandBuffer [label: %s]...", label);
-
     return true;
 }
 
 
-bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
+bool vwrpEndCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
 {
     VkResult result = vkEndCommandBuffer(commandBuffer);
     if (result != VK_SUCCESS)
@@ -980,13 +1205,11 @@ bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer)
         return false;
     }
 
-    // log_trace("结束录制 VkCommandBuffer [label: %s]！", label);
-
     return true;
 }
 
 
-VkRenderPass createRenderPass(
+VkRenderPass vwrpCreateRenderPass(
     VkDevice                        device,
     const VkRenderPassCreateInfo*   pCreateInfo
 )
@@ -1001,21 +1224,24 @@ VkRenderPass createRenderPass(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkRenderPass.");
+    log_trace("vwrp: 创建了一个 VkRenderPass.");
 
     return renderPass;
 }
 
 
-void destroyRenderPass(VkDevice device, VkRenderPass renderPass)
+void vwrpDestroyRenderPass(VkDevice device, VkRenderPass renderPass)
 {
     vkDestroyRenderPass(device, renderPass, NULL);
 
-    log_trace("调用了 vkDestroyRenderPass！");
+    log_trace("vwrp: 调用了 vkDestroyRenderPass！");
 }
 
 
-VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo)
+VkFramebuffer vwrpCreateFramebuffer(
+    VkDevice                        device,
+    const VkFramebufferCreateInfo*  pCreateInfo
+)
 {
     VkFramebuffer framebuffer = VK_NULL_HANDLE;
     VkResult result = vkCreateFramebuffer(device, pCreateInfo, NULL, &framebuffer);
@@ -1026,21 +1252,21 @@ VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreat
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkFramebuffer.");
+    log_trace("vwrp: 创建了一个 VkFramebuffer.");
 
     return framebuffer;
 }
 
 
-void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
+void vwrpDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer)
 {
     vkDestroyFramebuffer(device, framebuffer, NULL);
 
-    log_trace("调用了 vkDestroyFramebuffer！");
+    log_trace("vwrp: 调用了 vkDestroyFramebuffer！");
 }
 
 
-VkShaderModule createShaderModule(
+VkShaderModule vwrpCreateShaderModule(
     VkDevice        device,
     const char*     spvFilePath
 )
@@ -1067,7 +1293,7 @@ VkShaderModule createShaderModule(
 
     free(words);    // 成功创建完 VkShaderModule 后就可以释放数组内存了
 
-    log_info("创建了一个 VkShaderModule.");
+    log_trace("vwrp: 创建了一个 VkShaderModule.");
 
     return shaderModule;
 }
@@ -1155,15 +1381,15 @@ static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath)
 }
 
 
-void destroyShaderModule(VkDevice device, VkShaderModule shaderModule)
+void vwrpDestroyShaderModule(VkDevice device, VkShaderModule shaderModule)
 {
     vkDestroyShaderModule(device, shaderModule, NULL);
 
-    log_trace("调用了 vkDestroyShaderModule！");
+    log_trace("vwrp: 调用了 vkDestroyShaderModule！");
 }
 
 
-VkPipelineLayout createPipelineLayout(
+VkPipelineLayout vwrpCreatePipelineLayout(
     VkDevice                            device,
     const VkPipelineLayoutCreateInfo*   pCreateInfo
 )
@@ -1181,21 +1407,21 @@ VkPipelineLayout createPipelineLayout(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkPipelineLayout.");
+    log_trace("vwrp: 创建了一个 VkPipelineLayout.");
 
     return pipelineLayout;
 }
 
 
-void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
+void vwrpDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout)
 {
     vkDestroyPipelineLayout(device, pipelineLayout, NULL);
 
-    log_trace("调用了 vkDestroyPipelineLayout！");
+    log_trace("vwrp: 调用了 vkDestroyPipelineLayout！");
 }
 
 
-VkPipeline createGraphicsPipeline(
+VkPipeline vwrpCreateGraphicsPipeline(
     VkDevice                             device,
     const VkGraphicsPipelineCreateInfo*  pCreateInfo
 )
@@ -1215,21 +1441,21 @@ VkPipeline createGraphicsPipeline(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkPipeline.");
+    log_trace("vwrp: 创建了一个 VkPipeline.");
 
     return pipeline;
 }
 
 
-void destroyPipeline(VkDevice device, VkPipeline pipeline)
+void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline)
 {
     vkDestroyPipeline(device, pipeline, NULL);
 
-    log_trace("调用了 vkDestroyPipeline!");
+    log_trace("vwrp: 调用了 vkDestroyPipeline!");
 }
 
 
-VkSemaphore createSemaphore(
+VkSemaphore vwrpCreateSemaphore(
     const char*             label,
     VkDevice                device,
     VkSemaphoreCreateInfo*  pCreateInfo    
@@ -1245,21 +1471,21 @@ VkSemaphore createSemaphore(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkSemaphore [label:%s].", label);
+    log_trace("vwrp: 创建了一个 VkSemaphore [label:%s].", label);
 
     return semaphore;
 }
 
 
-void destroySemaphore(VkDevice device, VkSemaphore semaphore)
+void vwrpDestroySemaphore(VkDevice device, VkSemaphore semaphore)
 {
     vkDestroySemaphore(device, semaphore, NULL);
 
-    log_trace("调用了 vkDestroySemaphore!");
+    log_trace("vwrp: 调用了 vkDestroySemaphore!");
 }
 
 
-VkFence createFence(
+VkFence vwrpCreateFence(
     const char*         label,
     VkDevice            device,
     VkFenceCreateInfo*  pCreateInfo    
@@ -1275,21 +1501,82 @@ VkFence createFence(
         return VK_NULL_HANDLE;
     }
 
-    log_info("创建了一个 VkFence [label:%s].", label);
+    log_trace("vwrp: 创建了一个 VkFence [label:%s].", label);
 
     return fence;
 }
 
 
-void destroyFence(VkDevice device, VkFence fence)
+void vwrpDestroyFence(VkDevice device, VkFence fence)
 {
     vkDestroyFence(device, fence, NULL);
 
-    log_trace("调用了 vkDestroyFence!");
+    log_trace("vwrp: 调用了 vkDestroyFence!");
 }
 
 
-void queueSubmit(
+VkBuffer vwrpCreateBuffer(
+    const char*         label,
+    VkDevice            device,
+    VkBufferCreateInfo* pCreateInfo
+)
+{
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkResult result = vkCreateBuffer(device, pCreateInfo, NULL, &buffer);
+    if (result != VK_SUCCESS)
+    {
+        log_error("[label:%s] Failed to create a VkBuffer! Error Code(VkResult): %d",
+            label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_trace("vwrp: [label:%s] 创建了一个 VkBuffer.", label);
+
+    return buffer;
+}
+
+
+void vwrpDestroyBuffer(VkDevice device, VkBuffer buffer)
+{
+    vkDestroyBuffer(device, buffer, NULL);
+
+    log_trace("vwrp: 调用了 vkDestroyBuffer!");
+}
+
+
+VkDeviceMemory vwrpAllocateDeviceMemory(
+    const char*             label,
+    VkDevice                device,
+    VkMemoryAllocateInfo*   pAllocateInfo
+)
+{
+    VkDeviceMemory deviceMemory = VK_NULL_HANDLE;
+    VkResult result = vkAllocateMemory(device, pAllocateInfo, NULL, &deviceMemory);
+    if (result != VK_SUCCESS)
+    {
+        log_error("[label:%s] Failed to allocate a VkDeviceMemory! "
+            "Error Code(VkResult): %d",
+             label, result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_trace("vwrp: [label:%s] 创建了一个 VkDeviceMemory!", label);
+
+    return deviceMemory;
+}
+
+
+void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
+{
+    vkFreeMemory(device, deviceMemory, NULL);
+
+    log_trace("vwrp: 调用了 vkFreeMemory!");
+}
+
+
+void vwrpQueueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,
     const VkSubmitInfo  *pSubmitInfos,

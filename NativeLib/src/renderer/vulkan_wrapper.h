@@ -3,6 +3,7 @@
 #include "../common/log.h"
 #include "queue_family_indices.h"
 #include "swapchain_support_details.h"
+#include "vk_mem_alloc.h"
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -15,11 +16,11 @@
 /// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
 /// 
 /// @return 返回新创建的 VkInstance 句柄（当发生错误时返回 `NULL`）
-VkInstance createInstance(void);
+VkInstance vwrpCreateInstance(void);
 
 
 /// @brief 销毁给定的 VkInstance.
-void destroyInstance(VkInstance instance);
+void vwrpDestroyInstance(VkInstance instance);
 
 
 /// @brief 在成功创建 VkInstance 后调用该函数创建 VkSurfaceKHR，其是对窗口系统中
@@ -30,13 +31,13 @@ void destroyInstance(VkInstance instance);
 /// @param window 调用该函数需要传入一个有效的 GLFWwindow 句柄
 ///
 /// @return 返回新创建的 VkSurfaceKHR 句柄（当发生错误时返回 `NULL`）
-VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
+VkSurfaceKHR vwrpCreateSurface(VkInstance instance, GLFWwindow* window);
 
 
 /// @brief 销毁给定的 VkSurfaceKHR.
 ///
 /// @param instance 调用该函数需要传入一个对应的 VkInstance 句柄
-void destroySurface(VkInstance instance, VkSurfaceKHR surface);
+void vwrpDestroySurface(VkInstance instance, VkSurfaceKHR surface);
 
 
 /// @brief 查询可用物理设备并尝试选择可用的显卡作 PhysicalDevice.
@@ -45,25 +46,52 @@ void destroySurface(VkInstance instance, VkSurfaceKHR surface);
 /// @param surface 调用该函数需要传入一个有效的 VkSurfaceKHR 句柄
 ///
 /// @return 返回一个可用的 PhysicalDevice 句柄（当发生错误时返回 `NULL`）
-VkPhysicalDevice pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
+VkPhysicalDevice vwrpPickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
 
 
 /// @brief 根据给定物理设备创建逻辑设备.
 ///
-/// @param graphicsQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（graphics）
-/// @param presentationQueue 函数执行成功后，该参数会接收一个新的 VkQueue 句柄（presentation）
+/// @param pGraphicsQueueFamilyIndex 输出参数，输出对应图形队列的所属队列族索引，错误时为 -1
+/// @param pGraphicsQueue 输出参数，输出有效的 VkQueue 句柄（graphics），发生错误时为 `NULL`
+/// @param pPresentationQueueFamilyIndex 输出参数，输出对应呈现队列的所属队列族索引，错误时为 -1
+/// @param pPresentationQueue 输出参数，输出有效的 VkQueue 句柄（presentation），
+/// @param pTransferQueueFamilyIndex 输出参数，输出对应传输队列的所属队列族索引，错误时为 -1
+/// @param pTransferQueue 输出参数，输出有效的 VkQueue 句柄（transfer），发生错误时为 `NULL`
+/// 发生错误时为 `NULL`
 ///
 /// @return 返回新创建的 VkDevice 句柄（当发生错误时返回 `NULL`）
-VkDevice createLogicalDevice(
+VkDevice vwrpCreateLogicalDevice(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    VkQueue*            graphicsQueue,
-    VkQueue*            presentationQueue
+    uint32_t*           pGraphicsQueueFamilyIndex,
+    VkQueue*            pGraphicsQueue,
+    uint32_t*           pPresentationQueueFamilyIndex,
+    VkQueue*            pPresentationQueue,
+    uint32_t*           pTransferQueueFamilyIndex,
+    VkQueue*            pTransferQueue
 );
 
 
 /// @brief 销毁给定的 VkDevice.
-void destroyLogicalDevice(VkDevice device);
+void vwrpDestroyLogicalDevice(VkDevice device);
+
+
+/// @brief 创建 VMA 分配器.
+///
+/// @param instance 调用该函数需要传入一个有效的 VkInstance 句柄
+/// @param physicalDevice 调用该函数需要传入一个有效的 VkPhysicalDevice 句柄
+/// @param device 调用该函数需要传入一个有效的 VkDevice 句柄
+///
+/// @return 返回新创建的 VmaAllocator 句柄（当发生错误时返回 `NULL`）
+VmaAllocator vwrpCreateVmaAllocator(
+    VkInstance          instance,
+    VkPhysicalDevice    physicalDevice,
+    VkDevice            device
+);
+
+
+/// @brief 销毁给定的 VmaAllocator（该函数调用必须在 VkDevice 被销毁之前）. 
+void vwrpDestroyVmaAllocator(VmaAllocator allocator);
 
 
 /// @brief 根据给定窗口句柄和设备创建交换链.
@@ -79,7 +107,7 @@ void destroyLogicalDevice(VkDevice device);
 /// @param pSwapchainExtent 输出参数，其输出交换链图像的范围
 ///
 /// @return 返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回 `NULL`）
-VkSwapchainKHR createSwapchain(
+VkSwapchainKHR vwrpCreateSwapchain(
     GLFWwindow*         window,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
@@ -96,10 +124,10 @@ VkSwapchainKHR createSwapchain(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param swapchain 要销毁的交换链句柄
-/// @param ppSwapchainImages 需同时传入在 createSwapchain() 中分配的交换链图像数组供销毁
+/// @param ppSwapchainImages 需同时传入在 vwrpCreateSwapchain() 中分配的交换链图像数组供销毁
 /// (可传入 `NULL`，这时函数不会帮你销毁交换链图像数组，需要你自己销毁，例如你在重建交换链，
 /// 需分开销毁交换链和其图像数组)
-void destroySwapchain(
+void vwrpDestroySwapchain(
     VkDevice        device, 
     VkSwapchainKHR  swapchain, 
     VkImage**       ppSwapchainImages
@@ -114,7 +142,7 @@ void destroySwapchain(
 /// @param pSwapchainImages 调用该函数需要传入对应的交换链图像数组
 ///
 /// @return 创建成功后返回一个属于交换链的图像视图数组，失败则返回 `NULL`
-VkImageView* createSwapchainImageViews(
+VkImageView* vwrpCreateSwapchainImageViews(
     VkDevice        device,
     VkFormat        swapchainImageFormat,
     uint32_t        swapchainImageCount,
@@ -128,7 +156,7 @@ VkImageView* createSwapchainImageViews(
 /// @param swapchainImageCount 交换链图像总数
 /// @param ppSwapchainImageViews 要销毁的交换链图像视图的数组的地址
 ///（数组本身也会被销毁以释放内存）
-void destroySwapchainImageViews(
+void vwrpDestroySwapchainImageViews(
     VkDevice        device,
     uint32_t        swapchainImageCount,
     VkImageView**   ppSwapchainImageViews
@@ -141,7 +169,7 @@ void destroySwapchainImageViews(
 /// @param pCreateInfo 给定的命令池创建信息
 ///
 /// @return 返回新创建的 VkCommandPool 句柄（当发生错误时返回 `NULL`）
-VkCommandPool createCommandPool(
+VkCommandPool vwrpCreateCommandPool(
     VkDevice                        device,
     const VkCommandPoolCreateInfo*  pCreateInfo
 );
@@ -151,14 +179,17 @@ VkCommandPool createCommandPool(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param commandPool 要销毁的命令池句柄
-void destroyCommandPool(VkDevice device, VkCommandPool commandPool);
+void vwrpDestroyCommandPool(VkDevice device, VkCommandPool commandPool);
 
 
 /// @brief 分配（多个）命令缓冲区.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandPool` 对象
+///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pAllocateInfo 给定的命令缓冲区分配信息
-/// @param pCommandBuffers 输出参数作为目标，要求指向有效的 VkCommandBuffer 句柄的数组
-void allocateCommandBuffers(
+/// @param pCommandBuffers 输出参数，函数失败时输出 `NULL`
+void vwrpAllocateCommandBuffers(
     VkDevice                            device,
     const VkCommandBufferAllocateInfo*  pAllocateInfo,
     VkCommandBuffer*                    pCommandBuffers
@@ -167,12 +198,14 @@ void allocateCommandBuffers(
 
 /// @brief 开始录制给定命令缓冲区.
 ///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandBuffer` 对象
+///
 /// @param label 描述性标签，仅供输出日志信息用
 /// @param commandBuffer 目标命令缓冲区
 /// @param pBeginInfo 给定的开始录制信息
 ///
 /// @return 函数执行成功返回 `true`，反之遇到错误返回 `false`
-bool beginCommandBuffer(
+bool vwrpBeginCommandBuffer(
     const char*                     label,
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo  *pBeginInfo
@@ -181,11 +214,13 @@ bool beginCommandBuffer(
 
 /// @brief 结束录制给定命令缓冲区.
 ///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkCommandBuffer` 对象
+///
 /// @param label 描述性标签，仅供输出日志信息用
 /// @param commandBuffer 目标命令缓冲区
 ///
 /// @return 函数执行成功返回 `true`，反之遇到错误返回 `false`
-bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer);
+bool vwrpEndCommandBuffer(const char* label, VkCommandBuffer commandBuffer);
 
 
 /// @brief 创建渲染通道，其用于为管线提供目标帧缓冲区中关于附件的信息.
@@ -194,7 +229,7 @@ bool endCommandBuffer(const char* label, VkCommandBuffer commandBuffer);
 /// @param pCreateInfo 给定的渲染通道创建信息
 ///
 /// @return 返回新创建的 VkRenderPass 句柄（当发生错误时返回 `NULL`）
-VkRenderPass createRenderPass(
+VkRenderPass vwrpCreateRenderPass(
     VkDevice                        device,
     const VkRenderPassCreateInfo*   pCreateInfo
 );
@@ -204,7 +239,7 @@ VkRenderPass createRenderPass(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param renderPass 要销毁的渲染通道句柄
-void destroyRenderPass(VkDevice device, VkRenderPass renderPass);
+void vwrpDestroyRenderPass(VkDevice device, VkRenderPass renderPass);
 
 
 /// @brief 创建帧缓冲区，其用作管线渲染的目标，帧缓冲区包含了具体的附件
@@ -213,14 +248,17 @@ void destroyRenderPass(VkDevice device, VkRenderPass renderPass);
 /// @param pCreateInfo 给定的帧缓冲区创建信息
 ///
 /// @return 返回新创建的 VkFramebuffer 句柄（当发生错误时返回 `NULL`）
-VkFramebuffer createFramebuffer(VkDevice device, VkFramebufferCreateInfo* pCreateInfo);
+VkFramebuffer vwrpCreateFramebuffer(
+    VkDevice                          device,
+    const VkFramebufferCreateInfo*    pCreateInfo
+);
 
 
 /// @brief 销毁给定的 VkFramebuffer.
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param framebuffer 要销毁的帧缓冲区句柄
-void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer);
+void vwrpDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer);
 
 
 /// @brief 创建着色器模块，其用于为管线提供着色器阶段的着色器代码源.
@@ -229,7 +267,7 @@ void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer);
 /// @param spvFilePath 对应 SPIR-V 文件的目录
 ///
 /// @return 返回新创建的 VkShaderModule 句柄（当发生错误时返回 `NULL`）
-VkShaderModule createShaderModule(
+VkShaderModule vwrpCreateShaderModule(
     VkDevice        device,
     const char*     spvFilePath
 );
@@ -239,7 +277,7 @@ VkShaderModule createShaderModule(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param shaderModule 要销毁的着色器模块句柄
-void destroyShaderModule(VkDevice device, VkShaderModule shaderModule);
+void vwrpDestroyShaderModule(VkDevice device, VkShaderModule shaderModule);
 
 
 /// @brief 创建管线布局，其用于为管线提供描述符集的信息.
@@ -248,7 +286,7 @@ void destroyShaderModule(VkDevice device, VkShaderModule shaderModule);
 /// @param pCreateInfo 给定的管线布局创建信息
 ///
 /// @return 返回新创建的 VkPipelineLayout 句柄（当发生错误时返回 `NULL`）
-VkPipelineLayout createPipelineLayout(
+VkPipelineLayout vwrpCreatePipelineLayout(
     VkDevice                            device,
     const VkPipelineLayoutCreateInfo*   pCreateInfo
 );
@@ -258,7 +296,7 @@ VkPipelineLayout createPipelineLayout(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pipelineLayout 要销毁的管线布局句柄
-void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
+void vwrpDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
 
 
 /// @brief 创建图形管线.
@@ -267,7 +305,7 @@ void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout);
 /// @param pCreateInfo 给定的管线创建信息
 ///
 /// @return 返回新创建的 VkPipeline 句柄（当发生错误时返回 `NULL`）
-VkPipeline createGraphicsPipeline(
+VkPipeline vwrpCreateGraphicsPipeline(
     VkDevice                             device,
     const VkGraphicsPipelineCreateInfo*  pCreateInfo
 );
@@ -277,30 +315,57 @@ VkPipeline createGraphicsPipeline(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param pipeline 要销毁的管线句柄
-void destroyPipeline(VkDevice device, VkPipeline pipeline);
+void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline);
 
 
-VkSemaphore createSemaphore(
+/// @brief 创建一个信号量，用于在 GPU 端等待 GPU 端完成提交的命令.
+VkSemaphore vwrpCreateSemaphore(
     const char*             label,
     VkDevice                device,
     VkSemaphoreCreateInfo*  pCreateInfo    
 );
 
 
-void destroySemaphore(VkDevice device, VkSemaphore semaphore);
+/// @brief 销毁给定的 VkSemaphore. 
+void vwrpDestroySemaphore(VkDevice device, VkSemaphore semaphore);
 
 
-VkFence createFence(
+/// @brief 创建一个栅栏，用于在 CPU 端等待 GPU 端完成提交的命令. 
+VkFence vwrpCreateFence(
     const char*         label,
     VkDevice            device,
     VkFenceCreateInfo*  pCreateInfo    
 );
 
 
-void destroyFence(VkDevice device, VkFence fence);
+/// @brief 销毁给定的 VkFence.
+void vwrpDestroyFence(VkDevice device, VkFence fence);
 
 
-void queueSubmit(
+VkBuffer vwrpCreateBuffer(
+    const char*         label,
+    VkDevice            device,
+    VkBufferCreateInfo* pCreateInfo
+);
+
+
+void vwrpDestroyBuffer(VkDevice device, VkBuffer buffer);
+
+
+VkDeviceMemory vwrpAllocateDeviceMemory(
+    const char*             label,
+    VkDevice                device,
+    VkMemoryAllocateInfo*   pAllocateInfo
+);
+
+
+void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory);
+
+
+/// @brief 提交命令缓冲区至队列.
+///
+/// 注：该函数是外部同步的，因为使用了线程不安全的 `VkQueue` 对象
+void vwrpQueueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,
     const VkSubmitInfo  *pSubmitInfos,

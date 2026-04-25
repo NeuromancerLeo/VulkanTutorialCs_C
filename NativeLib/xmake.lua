@@ -39,7 +39,9 @@ target("nativelib_renderer")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/renderer/*.c", "src/common/*.c")
+    add_files("src/renderer/*.c", "src/renderer/*.cpp", "src/common/*.c")
+
+    add_cxxflags("-Wno-unused-variable")
 
     add_packages("vulkansdk", "glfw")
 target_end()
