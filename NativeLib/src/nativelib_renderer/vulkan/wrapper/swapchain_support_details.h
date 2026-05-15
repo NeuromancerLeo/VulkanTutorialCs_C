@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common/log.h"
+#include "../../../common/log.h"
 
 #include <stdlib.h>
 #include <stdio.h>

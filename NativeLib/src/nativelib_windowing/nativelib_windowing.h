@@ -5,6 +5,7 @@
 
 #include <GLFW/glfw3.h>
 #include <stdio.h>
+#include <pthread.h>
 
 
 /// @brief 初始化 GLFW 库并创建一个窗口.

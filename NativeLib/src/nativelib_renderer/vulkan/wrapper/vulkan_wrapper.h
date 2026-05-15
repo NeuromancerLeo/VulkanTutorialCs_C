@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../common/log.h"
+#include "../../../common/log.h"
 #include "queue_family_indices.h"
 #include "swapchain_support_details.h"
-#include "vk_mem_alloc.h"
+#include "../vma/vk_mem_alloc.h"
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -278,6 +278,30 @@ VkShaderModule vwrpCreateShaderModule(
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param shaderModule 要销毁的着色器模块句柄
 void vwrpDestroyShaderModule(VkDevice device, VkShaderModule shaderModule);
+
+
+/// @brief 创建描述符集布局，其用于定义一个描述符集的布局. 
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param pCreateInfo 给定的描述符集布局创建信息
+///
+/// @return 返回新创建的 VkDescriptorSetLayout 句柄（当发生错误时返回 `NULL`）
+VkDescriptorSetLayout vwrpCreateDescriptorSetLayout(
+    VkDevice                                device,
+    const VkDescriptorSetLayoutCreateInfo*  pCreateInfo
+);
+
+
+/// @brief 销毁给定的 VkDescriptorSetLayout. 
+///
+/// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
+/// @param descriptorSetLayout 要销毁的描述符集布局句柄
+///
+/// @return 返回新创建的 VkDescriptorSetLayout 句柄（当发生错误时返回 `NULL`）
+VkDescriptorSetLayout vwrpDestroyDescriptorSetLayout(
+    VkDevice                device,
+    VkDescriptorSetLayout   descriptorSetLayout
+);
 
 
 /// @brief 创建管线布局，其用于为管线提供描述符集的信息.

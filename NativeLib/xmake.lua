@@ -29,7 +29,7 @@ target("nativelib_windowing")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/windowing/*.c", "src/common/*.c")
+    add_files("src/nativelib_windowing/**.c", "src/common/**.c")
 
     add_packages("glfw")
 target_end()
@@ -39,7 +39,7 @@ target("nativelib_renderer")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/renderer/*.c", "src/renderer/*.cpp", "src/common/*.c")
+    add_files("src/nativelib_renderer/**.c", "src/nativelib_renderer/**.cpp", "src/common/**.c")
 
     add_cxxflags("-Wno-unused-variable")
 

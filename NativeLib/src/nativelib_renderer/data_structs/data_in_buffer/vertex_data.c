@@ -1,4 +1,4 @@
-#include "renderer_data_structs.h"
+#include "vertex_data.h"
 
 
 VkVertexInputBindingDescription get_vertex_data_input_binding_description(
@@ -39,7 +39,7 @@ void get_vertex_data_input_attribute_descriptions(
 
     outAttributeDescriptions[0].binding  = binding;
     outAttributeDescriptions[0].location = 0;
-    outAttributeDescriptions[0].format   = VK_FORMAT_R32G32_SFLOAT;
+    outAttributeDescriptions[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
     outAttributeDescriptions[0].offset   = offsetof(VertexData, position);
 
     outAttributeDescriptions[1].binding  = binding;

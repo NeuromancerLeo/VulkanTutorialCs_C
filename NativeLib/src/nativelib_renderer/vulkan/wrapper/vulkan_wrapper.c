@@ -1389,6 +1389,41 @@ void vwrpDestroyShaderModule(VkDevice device, VkShaderModule shaderModule)
 }
 
 
+VkDescriptorSetLayout vwrpCreateDescriptorSetLayout(
+    VkDevice                                device,
+    const VkDescriptorSetLayoutCreateInfo*  pCreateInfo
+)
+{
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkResult result = vkCreateDescriptorSetLayout(device,
+                          pCreateInfo,
+                          NULL,
+                          &descriptorSetLayout);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkDescriptorSetLayout!"
+            "Error Code(VkResult): %d", result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_trace("vwrp: 创建了一个 VkDescriptorSetLayout.");
+
+    return descriptorSetLayout;
+}
+
+
+VkDescriptorSetLayout vwrpDestroyDescriptorSetLayout(
+    VkDevice                device,
+    VkDescriptorSetLayout   descriptorSetLayout
+)
+{
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, NULL);
+
+    log_trace("vwrp: 调用了 vkDestroyDescriptorSetLayout！");
+}
+
+
 VkPipelineLayout vwrpCreatePipelineLayout(
     VkDevice                            device,
     const VkPipelineLayoutCreateInfo*   pCreateInfo

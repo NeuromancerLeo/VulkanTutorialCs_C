@@ -5,6 +5,7 @@ static bool allocate_main_command_buffers(RendererContext* pContext);
 static bool create_transfer_command_pool(RendererContext* pContext);
 static bool create_main_render_pass(RendererContext* pContext);
 static bool create_swapchain_framebuffers(RendererContext* pContext);
+static bool create_descriptor_set_layouts(RendererContext* pContext);
 static bool create_main_render_pass_pipelines(
     RendererContext*                          pContext,
     RctxMainRenderPassPipelinesCreateInfo*    pPipelinesCreateInfo
@@ -13,14 +14,19 @@ static inline bool create_mainrp_triangle_pipeline(
     RendererContext*           pContext,
     RctxPipelineCreateInfo*    pPipelineCreateInfo
 );
-static void destroy_main_render_pass_pipelines(RendererContext* pContext);
+static inline bool create_mainrp_unlit_pipeline(
+    RendererContext*           pContext,
+    RctxPipelineCreateInfo*    pPipelineCreateInfo
+);
+static bool create_descriptor_pools(RendererContext *pContext);
 static bool create_sync_objects(RendererContext* pContext);
 static bool record_main_command_buffer(
-    RendererContext*                    pContext,
-    uint32_t                            frameInFlightIndex,
-    uint32_t                            swapchainFramebufferIndex,
-    MainRenderPassPipelinesDrawInfo*    pMainRenderPassPipelinesDrawInfo
+    RendererContext*            pContext,
+    uint32_t                    frameInFlightIndex,
+    uint32_t                    swapchainFramebufferIndex,
+    MainRenderPassDrawInfo*     pMainRenderPassDrawInfo
 );
+static void destroy_main_render_pass_pipelines(RendererContext* pContext);
 static void destroy_swapchain_related_resources(RendererContext* pContext);
 static void recreate_swapchain(RendererContext* pContext);
 
@@ -58,6 +64,9 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
     if (pContext->physicalDevice == VK_NULL_HANDLE)     // 选取物理设备
         return false;
     
+    vkGetPhysicalDeviceProperties(pContext->physicalDevice,
+        &pContext->physicalDeviceProperties);
+
     log_info("成功选取一个物理设备.");
 
     pContext->device = vwrpCreateLogicalDevice(pContext->physicalDevice,
@@ -125,6 +134,11 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
 
     log_info("成功创建帧缓冲区.");
 
+    if(!create_descriptor_set_layouts(pContext))
+        return false;
+
+    log_info("成功创建描述符集布局.");
+
     // 为主渲染通道创建所需渲染管线
     RctxMainRenderPassPipelinesCreateInfo mainRenderPassPipelinesCreateInfo = {}; 
     mainRenderPassPipelinesCreateInfo.triangle.vertexSpvFilePath     =
@@ -134,6 +148,14 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
     mainRenderPassPipelinesCreateInfo.triangle.fragmentSpvFilePath   =
         "./triangle_frag.spv";
     mainRenderPassPipelinesCreateInfo.triangle.fragmentSpvEntryPoint =
+        "main";
+    mainRenderPassPipelinesCreateInfo.unlit.vertexSpvFilePath     =
+        "./unlit_vert.spv";
+    mainRenderPassPipelinesCreateInfo.unlit.vertexSpvEntryPoint   =
+        "main";
+    mainRenderPassPipelinesCreateInfo.unlit.fragmentSpvFilePath   =
+        "./unlit_frag.spv";
+    mainRenderPassPipelinesCreateInfo.unlit.fragmentSpvEntryPoint =
         "main";
 
     if (!create_main_render_pass_pipelines(pContext,
@@ -350,12 +372,68 @@ static bool create_swapchain_framebuffers(RendererContext* pContext)
     return true;
 }
 
+static bool create_descriptor_set_layouts(RendererContext* pContext)
+{
+    // 填写 VkDescriptorSetLayoutBinding 定义描述符绑定（不是集）
+    // （一个描述符 binding 对应一个着色器代码中的 Uniform 变量）
+
+    VkDescriptorSetLayoutBinding cameraUniformBufferLayout = {};
+    cameraUniformBufferLayout.binding         = 0;
+    cameraUniformBufferLayout.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    // 这个 descriptorCount 是允许你 binding 的描述符是数组的意思
+    cameraUniformBufferLayout.descriptorCount = 1;
+    cameraUniformBufferLayout.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT
+                                               | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding drawItemUniformBufferLayout = {};
+    drawItemUniformBufferLayout.binding         = 0;
+    // 对于 drawItems 描述符集，在绑定该集时使用 dynamic offset 就能实现单个 buffer 包含多个
+    // drawItem 的 uniform buffer 的内容，故需指定该 binding 类型为动态的 uniform buffer
+    // 即这个描述符指向的是大 buffer，通过 dynamic offset 取里面的 uniform 变量数据.
+    // (binding 的布局设置只在乎类型和数量（是否数组），不关心具体大小，之后会在真正创建描述符
+    // 集时填写 VkDescriptorBufferInfo 来指定)
+    drawItemUniformBufferLayout.descriptorType  = 
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; 
+    drawItemUniformBufferLayout.descriptorCount = 1;
+    drawItemUniformBufferLayout.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT
+                                                 | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // 创建 camera 描述符集布局
+    VkDescriptorSetLayoutCreateInfo cameraDescriptorSetLayoutCreateInfo = {};
+    cameraDescriptorSetLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    cameraDescriptorSetLayoutCreateInfo.bindingCount = 1;
+    cameraDescriptorSetLayoutCreateInfo.pBindings = &cameraUniformBufferLayout;
+
+    // 创建 drawItems 描述符集布局
+    VkDescriptorSetLayoutCreateInfo drawItemsDescriptorSetLayoutCreateInfo = {};
+    drawItemsDescriptorSetLayoutCreateInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    drawItemsDescriptorSetLayoutCreateInfo.bindingCount = 1;
+    drawItemsDescriptorSetLayoutCreateInfo.pBindings = &drawItemUniformBufferLayout;
+
+    pContext->cameraDescriptorSetLayout =
+        vwrpCreateDescriptorSetLayout(pContext->device,
+            &cameraDescriptorSetLayoutCreateInfo);
+    if (!pContext->cameraDescriptorSetLayout)
+        return false;
+
+    pContext->drawItemsDescriptorSetLayout =
+        vwrpCreateDescriptorSetLayout(pContext->device,
+            &drawItemsDescriptorSetLayoutCreateInfo);
+    if (!pContext->drawItemsDescriptorSetLayout)
+        return false;
+}
+
 static bool create_main_render_pass_pipelines(
     RendererContext*                          pContext,
     RctxMainRenderPassPipelinesCreateInfo*    pPipelinesCreateInfo
 )
 {
     if(!create_mainrp_triangle_pipeline(pContext, &pPipelinesCreateInfo->triangle))
+        return false;
+
+    if(!create_mainrp_unlit_pipeline(pContext, &pPipelinesCreateInfo->unlit))
         return false;
 
     return true;
@@ -366,7 +444,7 @@ static inline bool create_mainrp_triangle_pipeline(
     RctxPipelineCreateInfo*    pPipelineCreateInfo
 )
 {
-// 0.（配置动态状态）（即不需要静态烘培到管线的状态）
+    // 0.（配置动态状态）（即不需要静态烘培到管线的状态）
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,      // 视口大小
         VK_DYNAMIC_STATE_SCISSOR        // 剪裁矩形
@@ -519,7 +597,7 @@ static inline bool create_mainrp_triangle_pipeline(
 
     // 8.（配置 Pipeline Layout）填写 VkPipelineLayoutCreateInfo
     // Pipeline Layout 设置的是 VkDescriptorSetLayout 数组信息和推送常量，与着色器 uniform
-    // 有关，现在我们不需要
+    // 有关，该管线不需要任何 Uniform 变量，直接填写 VkPipelineLayoutCreateInfo 即可
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
@@ -556,6 +634,236 @@ static inline bool create_mainrp_triangle_pipeline(
         return false;
 
     return true;
+}
+
+static inline bool create_mainrp_unlit_pipeline(
+    RendererContext*           pContext,
+    RctxPipelineCreateInfo*    pPipelineCreateInfo
+)
+{
+    // 0.（配置动态状态）（即不需要静态烘培到管线的状态）
+    VkDynamicState dynamicStates[] = {
+        VK_DYNAMIC_STATE_VIEWPORT,      // 视口大小
+        VK_DYNAMIC_STATE_SCISSOR        // 剪裁矩形
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};
+    dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicStateInfo.dynamicStateCount = 2;
+    dynamicStateInfo.pDynamicStates    = dynamicStates;
+
+    // 对于视口和剪裁矩形，由于我们指定它们为动态的状态，故在这只需要指定它们的数量
+    // 而不指定具体结构体指针，实际的视口和剪裁矩形将会要在绘制时设置
+    VkPipelineViewportStateCreateInfo viewportStateInfo = {};
+    viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportStateInfo.viewportCount = 1;
+    viewportStateInfo.scissorCount  = 1;
+
+
+    // 1.（配置着色器阶段）创建着色器模块
+    // VkShaderModule（SPV 码）在创建图形管线时才会被编译链接成 GPU 机器码，且在管线创建完成
+    // 后我们既可以调用 vkDestroyShaderModule 进行销毁也可以存着备后用（比如重建管线之类）
+    pContext->mainRenderPassPipelines.unlit.vertexShaderModule =    // 顶点着色器
+        vwrpCreateShaderModule(pContext->device,
+            pPipelineCreateInfo->vertexSpvFilePath);
+    if (pContext->mainRenderPassPipelines.unlit.vertexShaderModule
+        == VK_NULL_HANDLE)
+        return false;
+
+    pContext->mainRenderPassPipelines.unlit.fragmentShaderModule =  // 片元着色器
+        vwrpCreateShaderModule(pContext->device, 
+            pPipelineCreateInfo->fragmentSpvFilePath);
+    if (pContext->mainRenderPassPipelines.unlit.fragmentShaderModule
+        == VK_NULL_HANDLE)
+        return false;
+
+    // 1.5.（配置着色器阶段）填写 VkPipelineShaderStageCreateInfo
+    VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};     // 顶点着色器
+    vertexShaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertexShaderStageInfo.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+    vertexShaderStageInfo.module = 
+        pContext->mainRenderPassPipelines.unlit.vertexShaderModule;
+    vertexShaderStageInfo.pName  = pPipelineCreateInfo->vertexSpvEntryPoint;      
+                                   // 指定 SPV 的函数入口点
+                                   //（SPV 是可以由多个着色器文件编译得来的）
+
+    VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};   // 片元着色器
+    fragmentShaderStageInfo.sType  =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragmentShaderStageInfo.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragmentShaderStageInfo.module =
+        pContext->mainRenderPassPipelines.unlit.fragmentShaderModule;
+    fragmentShaderStageInfo.pName  = pPipelineCreateInfo->fragmentSpvEntryPoint;
+
+    // 创建 craeteInfo 数组备用
+    VkPipelineShaderStageCreateInfo shaderStageInfos[] = {
+        vertexShaderStageInfo,
+        fragmentShaderStageInfo
+    };
+
+
+    // 2.（配置顶点输入阶段）填写 VkPipelineVertexInputStateCreateInfo
+    // 顶点输入阶段需要设置两种结构体，分别是
+    // VkVertexInputBindingDescription 和
+    // VkVertexInputAttributeDescription
+
+    VkVertexInputBindingDescription vertexBinding0Description = 
+        get_vertex_data_input_binding_description(0);
+
+    uint32_t vertexInputAttributeCount = 0;
+    get_vertex_data_input_attribute_descriptions(0, &vertexInputAttributeCount, NULL);
+
+    VkVertexInputAttributeDescription 
+        vertexInputAttributeDescriptions[vertexInputAttributeCount];
+    get_vertex_data_input_attribute_descriptions(0,
+        &vertexInputAttributeCount,
+        vertexInputAttributeDescriptions);
+
+    VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
+    vertexInputStateInfo.sType = 
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    // 对于顶点数据用 Buffer 的绑定，这里规定该管线只绑定 1 个 VkBuffer
+    vertexInputStateInfo.vertexBindingDescriptionCount   = 1;
+    vertexInputStateInfo.pVertexBindingDescriptions      = &vertexBinding0Description;
+    vertexInputStateInfo.vertexAttributeDescriptionCount = vertexInputAttributeCount;
+    vertexInputStateInfo.pVertexAttributeDescriptions    =
+        vertexInputAttributeDescriptions;
+
+    // 把顶点绑定信息记录在管线结构体中备用
+    pContext->mainRenderPassPipelines.unlit.vertexFirstBindingIndex =
+        vertexBinding0Description.binding;
+    pContext->mainRenderPassPipelines.unlit.vertexBindingCount      =
+        vertexInputStateInfo.vertexBindingDescriptionCount;
+
+    // 3.（配置输入装配阶段）填写 VkPipelineInputAssemblyStateCreateInfo
+    VkPipelineInputAssemblyStateCreateInfo vertexInputAssemblyInfo = {};
+    vertexInputAssemblyInfo.sType = 
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    vertexInputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+
+    // 4.（配置光栅化阶段）填写 VkPipelineRasterizationStateCreateInfo
+    VkPipelineRasterizationStateCreateInfo rasterizationStateInfo = {};
+    rasterizationStateInfo.sType = 
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStateInfo.rasterizerDiscardEnable = VK_FALSE;      // 是否禁用光栅化
+    rasterizationStateInfo.depthClampEnable        = VK_FALSE;
+    rasterizationStateInfo.depthBiasEnable         = VK_FALSE;      // 是否启用深度偏移
+    rasterizationStateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizationStateInfo.lineWidth   = 1.0f;
+    // 定义顺时针顶点顺序为正面，逆时针顶点顺序为背面
+    rasterizationStateInfo.cullMode    = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateInfo.frontFace   = VK_FRONT_FACE_CLOCKWISE; 
+
+
+    // 5.（配置多重采样阶段，MSAA）填写 VkPipelineMultisampleStateCreateInfo
+    // 禁用
+    VkPipelineMultisampleStateCreateInfo multisamplingStateInfo = {};
+    multisamplingStateInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisamplingStateInfo.sampleShadingEnable  = VK_FALSE;
+    multisamplingStateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+
+    // 6.（配置深度和模板测试阶段）填写 VkPipelineDepthStencilStateCreateInfo
+    // 暂时不需要
+
+
+    // 7.（配置颜色混合阶段）填写 VkPipelineColorBlendAttachmentState，
+    // 其包含针对帧缓冲区中单个颜色附件的颜色混合设置
+    // 这里我们的帧缓冲区仅含一个颜色附件（which is 交换链图像）
+    // 所以这里填写一个即可，且不启用混合
+    VkPipelineColorBlendAttachmentState colorBlendAttachmentState0 = {};
+    // 要写入的颜色通道
+    colorBlendAttachmentState0.colorWriteMask = VK_COLOR_COMPONENT_A_BIT
+                                               | VK_COLOR_COMPONENT_R_BIT
+                                               | VK_COLOR_COMPONENT_G_BIT
+                                               | VK_COLOR_COMPONENT_B_BIT;
+    colorBlendAttachmentState0.blendEnable    = VK_FALSE;
+
+    // 7.5 填写 VkPipelineColorBlendStateCreateInfo, 其包含颜色混合的全局设置（覆盖性的）
+    VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
+    colorBlendStateInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    // 是否启用全局覆盖性颜色混合设置，启用会使得上面所有颜色附件的颜色混合设置都被忽略，
+    // 全部强制使用逻辑操作计算混合
+    colorBlendStateInfo.logicOpEnable   = VK_FALSE;
+    colorBlendStateInfo.attachmentCount = 1;
+    colorBlendStateInfo.pAttachments    = &colorBlendAttachmentState0;
+
+
+    // 8.（配置 Pipeline Layout）填写 VkPipelineLayoutCreateInfo
+    // Pipeline Layout 设置的是 VkDescriptorSetLayout 数组信息和推送常量，与着色器 uniform
+    // 有关
+    VkDescriptorSetLayout descriptorSetLayouts[] =
+        { pContext->cameraDescriptorSetLayout, pContext->drawItemsDescriptorSetLayout};
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 2;
+    pipelineLayoutInfo.pSetLayouts    = descriptorSetLayouts;
+
+    // 创建管线布局
+    pContext->mainRenderPassPipelines.unlit.pipelineLayout = 
+        vwrpCreatePipelineLayout(pContext->device, &pipelineLayoutInfo);
+    if (pContext->mainRenderPassPipelines.unlit.pipelineLayout == VK_NULL_HANDLE)
+        return false;
+
+
+    // 9.创建图形管线
+    VkGraphicsPipelineCreateInfo createInfo = {};
+    createInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfo.pDynamicState       = &dynamicStateInfo;
+    createInfo.stageCount          = 2;
+    createInfo.pStages             = shaderStageInfos;
+    createInfo.pVertexInputState   = &vertexInputStateInfo;
+    createInfo.pInputAssemblyState = &vertexInputAssemblyInfo;
+    createInfo.pViewportState      = &viewportStateInfo;
+    createInfo.pRasterizationState = &rasterizationStateInfo;
+    createInfo.pMultisampleState   = &multisamplingStateInfo;
+    createInfo.pDepthStencilState  = NULL;
+    createInfo.pColorBlendState    = &colorBlendStateInfo;
+    createInfo.layout              =
+        pContext->mainRenderPassPipelines.triangle.pipelineLayout;
+    createInfo.renderPass          = pContext->mainRenderPass;
+    createInfo.subpass             = 0;
+
+    pContext->mainRenderPassPipelines.triangle.pipeline =
+        vwrpCreateGraphicsPipeline(pContext->device, &createInfo);
+    if (pContext->mainRenderPassPipelines.triangle.pipeline == VK_NULL_HANDLE)
+        return false;
+
+    return true;
+}
+
+// uint32_t cameraDescriptorSetCount, uint32_t drawItemsDescriptorSetCount
+static bool create_descriptor_pools(RendererContext *pContext)
+{
+    // 1. camera Descriptor Set
+    
+    // camera uniform buffer
+    VkDescriptorPoolSize cameraUniformBufferPoolSize = {};
+    cameraUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    cameraUniformBufferPoolSize.descriptorCount = 16 * MAX_FRAMES_IN_FLIGHT;
+
+    VkDescriptorPoolCreateInfo cameraDescriptorSetPoolCreateInfo = {};
+    cameraDescriptorSetPoolCreateInfo.sType         =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    cameraDescriptorSetPoolCreateInfo.poolSizeCount = 1;
+    cameraDescriptorSetPoolCreateInfo.pPoolSizes    = &cameraUniformBufferPoolSize;
+    cameraDescriptorSetPoolCreateInfo.maxSets       = 16 * MAX_FRAMES_IN_FLIGHT;
+
+    // drawItem(s) uniform buffer
+    VkDescriptorPoolSize drawItemUniformBufferPoolSize = {};
+    drawItemUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    drawItemUniformBufferPoolSize.descriptorCount = 16 * MAX_FRAMES_IN_FLIGHT;
+
+    VkDescriptorPoolCreateInfo drawItemsDescriptorSetPoolCreateInfo = {};
+    drawItemsDescriptorSetPoolCreateInfo.sType         =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    drawItemsDescriptorSetPoolCreateInfo.poolSizeCount = 1;
+    drawItemsDescriptorSetPoolCreateInfo.pPoolSizes    = &drawItemUniformBufferPoolSize;
+    drawItemsDescriptorSetPoolCreateInfo.maxSets       = 16 * MAX_FRAMES_IN_FLIGHT;
 }
 
 static bool create_sync_objects(RendererContext* pContext)
@@ -647,7 +955,15 @@ void rctxDestroyRendererContext(RendererContext* pContext)
 
     /**** 管线对象相关 ****/
 
-    destroy_main_render_pass_pipelines(pContext);
+    if(pContext->cameraDescriptorSetLayout)                        // 销毁描述符集布局
+        vwrpDestroyDescriptorSetLayout(pContext->device,
+            pContext->cameraDescriptorSetLayout);
+
+    if(pContext->drawItemsDescriptorSetLayout)
+        vwrpDestroyDescriptorSetLayout(pContext->device,
+            pContext->drawItemsDescriptorSetLayout);
+
+    destroy_main_render_pass_pipelines(pContext);                  // 销毁管线
 
     /**** 命令池对象相关 ****/
 
@@ -743,26 +1059,39 @@ static void destroy_swapchain_related_resources(RendererContext* pContext)
 }
 
 
-bool rctxCreateAndFillStaticBuffer(
-    RendererContext*          pContext,
-    VkBufferUsageFlagBits     usage,
-    size_t                    dataSize,
-    const void*               pData,
-    VkBuffer*                 outBuffer,
-    VmaAllocation*            outAllocation
+bool rctxCreateStaticBuffer(
+    RendererContext*        pContext,
+    VkBufferUsageFlagBits   usage,
+    size_t                  bufferSize,
+    uint64_t                dataOffset,
+    size_t                  dataSize,
+    const void*             pData,
+    VkBuffer*               outBuffer,
+    VmaAllocation*          outAllocation
 )
 {
+    if (dataOffset + dataSize > bufferSize)
+    {
+        log_error("%s(): dataOffset + dataSize 的结果大于 bufferSize！"
+            "请检查你的参数填写是否正确！函数返回.", __func__);
+
+        return false;
+    }
+
     // 1.创建 HOST_VISIBLE 的暂存缓冲区
     VkBufferCreateInfo stagingBufferCreateInfo = {};
     stagingBufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingBufferCreateInfo.size        = dataSize;
+    stagingBufferCreateInfo.size        = bufferSize;
     stagingBufferCreateInfo.usage       = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    // 该 Buffer 只会在传输队列中使用
     stagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VmaAllocationCreateInfo stagingBufferAllocationCreateInfo = {};
     stagingBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     stagingBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
         VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    stagingBufferAllocationCreateInfo.requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkBuffer stagingBuffer = VK_NULL_HANDLE;
     VmaAllocation stagingAllocation = VK_NULL_HANDLE;
@@ -783,17 +1112,22 @@ bool rctxCreateAndFillStaticBuffer(
     }
 
     // 将数据写入暂存缓冲区
-    memcpy(stagingBufferAllocationInfo.pMappedData, pData, dataSize);
+    uint8_t* address = (uint8_t*)stagingBufferAllocationInfo.pMappedData;
+    address += dataOffset;
+    memcpy(address, pData, dataSize);
 
     // 非 coherent 内存，甲方写入后均应手动刷新同步至乙方内存
-    vmaFlushAllocation(pContext->vmaAllocator, stagingAllocation, 0, dataSize);
+    vmaFlushAllocation(pContext->vmaAllocator,
+        stagingAllocation,
+        dataOffset,
+        dataSize);
 
     // 2.接下来创建最终的 Vertex Buffer（DEVICE_LOCAL）
     uint32_t sharingQueueFamilyIndices[2];  // 这里先准备好当资源 Sharing Mode 需为并发时，
                                             // 要用到的队列族指明数组
     VkBufferCreateInfo vertexBufferCreateInfo = {};
     vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vertexBufferCreateInfo.size  = dataSize;
+    vertexBufferCreateInfo.size  = bufferSize;
     vertexBufferCreateInfo.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     // Buffer 资源会被图形队列和传输队列使用
     if (pContext->graphicsQueueFamilyIndex == pContext->transferQueueFamilyIndex)
@@ -855,14 +1189,14 @@ bool rctxCreateAndFillStaticBuffer(
     commandBufferAllocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     commandBufferAllocInfo.commandBufferCount = 1;
 
-    VkCommandBufferBeginInfo commandBufferBegineInfo = {};
-    commandBufferBegineInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBegineInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     VkBufferCopy copyRegion = {};
-    // copyRegion.srcOffset = 0;  // 源缓冲区偏移量
-    // copyRegion.dstOffset = 0;  // 目标缓冲区偏移量
-    copyRegion.size         = dataSize;
+    copyRegion.srcOffset = dataOffset;  // 源缓冲区偏移量
+    copyRegion.dstOffset = dataOffset;  // 目标缓冲区偏移量
+    copyRegion.size      = dataSize;
 
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -886,7 +1220,7 @@ bool rctxCreateAndFillStaticBuffer(
     // 4.开始录制这个命令缓冲区
     if (!vwrpBeginCommandBuffer("用于 VkBuffer 的复制（Staging 上传）",
              commandBuffer, 
-             &commandBufferBegineInfo))
+             &commandBufferBeginInfo))
     {
         pthread_mutex_unlock(&pContext->transferMutex);
 
@@ -934,18 +1268,133 @@ bool rctxCreateAndFillStaticBuffer(
 
     *outBuffer = staticBuffer;
     *outAllocation = staticBufferAllocation;
-    
+
     VmaAllocationInfo allocationInfo = {};
     vmaGetAllocationInfo(pContext->vmaAllocator,
         staticBufferAllocation,
         &allocationInfo);
-    
+
     log_info("创建了一个静态 Buffer %p (name: %s, size: %d).",
         staticBuffer,
         allocationInfo.pName,
         allocationInfo.size);
 
     return true;
+}
+
+
+bool rctxCreateDynamicBuffer(
+    RendererContext*          pContext,
+    VkBufferUsageFlagBits     usage,
+    size_t                    bufferSize,
+    uint64_t                  dataOffset,
+    size_t                    dataSize,
+    const void*               pData,
+    VkBuffer*                 outBuffer,
+    VmaAllocation*            outAllocation
+)
+{
+    if (dataOffset + dataSize > bufferSize)
+    {
+        log_error("%s(): dataOffset + dataSize 的结果大于 bufferSize！"
+            "请检查你的参数填写是否正确！函数返回.", __func__);
+
+        return false;
+    }
+
+    // dynamic 表示其其处于长期映射状态以方便用户对其进行数据更新.
+    // 1.创建缓冲区
+    VkBufferCreateInfo dynamicBufferCreateInfo = {};
+    dynamicBufferCreateInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    // 对于随时可能进行数据写入更新的动态缓冲区，使用 Ring Buffer 方法创建多个副本空间
+    // 这样可以保证不同飞行帧状态之间的数据同步安全（一个飞行帧占用一段副本空间）
+    dynamicBufferCreateInfo.size        = bufferSize * MAX_FRAMES_IN_FLIGHT;
+    dynamicBufferCreateInfo.usage       = usage;
+    // 暂不考虑传输队列，该 Buffer 设计只使用图形队列，CPU 直接更新数据
+    dynamicBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VmaAllocationCreateInfo dynamicBufferAllocationCreateInfo = {};
+    dynamicBufferAllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    // 动态缓冲区设计为持续性映射以及顺序写入友好的，其针对一次写入大量数据进行优化，
+    // 故对应的 Buffer 数据更新函数应偏好使用一次大块数据式地全量更新，尽量避免随机写入
+    dynamicBufferAllocationCreateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    // 指明要求内存类型为 HOST_VISIBLE 和 HOST_COHERENT
+    dynamicBufferAllocationCreateInfo.requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    VkBuffer dynamicBuffer = VK_NULL_HANDLE;
+    VmaAllocation dynamicBufferAllocation = VK_NULL_HANDLE;
+    VmaAllocationInfo dynamicBufferAllocationInfo = {};
+
+    VkResult result = vmaCreateBuffer(pContext->vmaAllocator,
+                          &dynamicBufferCreateInfo,
+                          &dynamicBufferAllocationCreateInfo,
+                          &dynamicBuffer,
+                          &dynamicBufferAllocation,
+                          &dynamicBufferAllocationInfo);
+    if (result != VK_SUCCESS)
+    {
+        log_error("%s(): VMA has an error creating VkBuffer! "
+            "Error Code(VkResult): %d", __func__, result);
+
+        return false;
+    }
+
+    // 将数据写入动态缓冲区（当前飞行帧）
+    // 注意，如果从多个线程同时调用该函数，那就必须保证 currentFrameInFlightIndex 在所有调用
+    // 的期间值不会被修改，换句话说也就是不能在该函数被调用期间调用 rctxEndFrame()！
+    // 下面的 rctxUpdateDynamicBuffer() 也是同理
+    uint8_t* address = (uint8_t*)dynamicBufferAllocationInfo.pMappedData;
+    address += (bufferSize * pContext->currentFrameInFlightIndex) + dataOffset;
+    memcpy(address, pData, dataSize);
+
+    vmaSetAllocationName(pContext->vmaAllocator,
+        dynamicBufferAllocation,
+        "DynamicBuffer");
+
+    *outBuffer = dynamicBuffer;
+    *outAllocation = dynamicBufferAllocation;
+
+    VmaAllocationInfo allocInfo = {};
+    vmaGetAllocationInfo(pContext->vmaAllocator, dynamicBufferAllocation, &allocInfo);
+
+    log_info("创建了一个动态 Buffer %p (name: %s, size: %d).",
+        dynamicBuffer,
+        allocInfo.pName,
+        allocInfo.size);
+
+    return true;
+}
+
+
+void rctxUpdateDynamicBuffer(
+    RendererContext*          pContext,
+    size_t                    bufferSize,
+    uint32_t                  dataOffset,
+    size_t                    dataSize,
+    const void*               pData,
+    VmaAllocation             allocation
+)
+{
+    if (dataOffset + dataSize > bufferSize)
+    {
+        log_error("%s(): dataOffset + dataSize 的结果大于 bufferSize！"
+            "请检查你的参数填写是否正确！函数返回.", __func__);
+
+        return false;
+    }
+
+    VmaAllocationInfo allocationInfo = {};
+    vmaGetAllocationInfo(pContext->vmaAllocator,
+        allocation,
+        &allocationInfo);
+
+    // 将数据写入动态缓冲区（当前飞行帧）
+    uint8_t* address = (uint8_t*)allocationInfo.pMappedData;
+    address += (bufferSize * pContext->currentFrameInFlightIndex) + dataOffset;
+    memcpy(address, pData, dataSize);
+
 }
 
 
@@ -971,30 +1420,40 @@ void rctxDestroyBuffer(
 }
 
 
+void rctxBeginFrame(RendererContext* pContext)
+{
+    // 0.等待当前飞行帧栅栏
+    vkWaitForFences(pContext->device,
+        1,
+        &pContext->frameInFlightFences[pContext->currentFrameInFlightIndex],
+        VK_TRUE,
+        UINT64_MAX);
+}
+
+
 void rctxDrawFrame(
     RendererContext*                     pContext,
     bool                                 isFramebufferResized,
-    MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo
+    // MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo,
+    MainRenderPassDrawInfo*              pMainRenderPassDrawInfo
 )
 {
     // 检查传入参数
-    if (!pMainRenderPassPipelinesDrawInfo)
+    if (!pMainRenderPassDrawInfo)
     {
-        log_error("%s()：传入了无效的 "
-            "pMainRenderPassPipelinesDrawInfo (MainRenderPassPipelinesDrawInfo*)，"
-            "该参数不得为 NULL！");
+        log_error("%s(): 传入了无效的 "
+            "pMainRenderPassDrawInfo (MainRenderPassDrawInfo*)，"
+            "该参数不得为 NULL！", __func__);
 
         return;
     }
+    // 设置 record 函数指针供后续主命令录制时使用   /*, ...RenderPassDrawInfo...*/
+    set_pipeline_task_record_func(pMainRenderPassDrawInfo);
 
-    static int frameInFlightIndex = 0;
+    // 防止获取变量的代码过长
+    static uint32_t frameInFlightIndex = 0;
 
-    // 0.等待 In Flight 帧栅栏
-    vkWaitForFences(pContext->device,
-        1,
-        &pContext->frameInFlightFences[frameInFlightIndex],
-        VK_TRUE,
-        UINT64_MAX);
+    frameInFlightIndex = pContext->currentFrameInFlightIndex;
 
     // 1.请求交换链图像（获取可用交换链图像索引）
     uint32_t swapchainImageIndex = 0;
@@ -1035,7 +1494,7 @@ void rctxDrawFrame(
     record_main_command_buffer(pContext,
         frameInFlightIndex,
         swapchainImageIndex,
-        pMainRenderPassPipelinesDrawInfo);
+        pMainRenderPassDrawInfo);
     
     // 4.准备提交主命令缓冲区
     
@@ -1119,7 +1578,6 @@ void rctxDrawFrame(
         log_error("%s()：交换链图像的呈现发生错误！Error Code(VkResult)：%d",
             __func__, result);
 
-    frameInFlightIndex = (frameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 /// @brief 根据传入的已分类的绘制信息，按渲染通道依次录制子通道（绑定、绘制），该函数的录制包含
@@ -1131,12 +1589,11 @@ void rctxDrawFrame(
 ///
 /// @return 发生错误时返回 `false`
 static bool record_main_command_buffer(
-    RendererContext*                     pContext,
-    uint32_t                             frameInFlightIndex,
-    uint32_t                             swapchainFramebufferIndex,
-//  TODO: 设计某种 PipelinesDrawInfo，让调用者以渲染通道为单位，传入必要子管线绘制信息，例如：
-    MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo
-//  DebugRenderPassPipelinesDrawInfo*    pDebugRenderPassPipelinesDrawInfo
+    RendererContext*            pContext,
+    uint32_t                    frameInFlightIndex,
+    uint32_t                    swapchainFramebufferIndex,
+//  TODO: 设计某种 PipelinesDrawInfo，让调用者以渲染通道为单位，传入必要子通道绘制信息，例如：
+    MainRenderPassDrawInfo*     pMainRenderPassDrawInfo
 )
 {
     char* label = "main command buffer";
@@ -1153,7 +1610,7 @@ static bool record_main_command_buffer(
     if (!vwrpBeginCommandBuffer(label, commandBuffer, &commandBufferBeginInfo))
         return false;
 
-    // 2.开始录制渲染通道
+    // 2.开始录制 MainRenderPass
     VkRenderPassBeginInfo renderPassBeginInfo = {};
     renderPassBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassBeginInfo.renderPass        = pContext->mainRenderPass;
@@ -1166,109 +1623,46 @@ static bool record_main_command_buffer(
     renderPassBeginInfo.clearValueCount   = 1;
     renderPassBeginInfo.pClearValues      = &clearValue;
 
-    // 注：调用 vkCmdBeginRenderPass() 会隐式开始第 0 个 subpass
+    // 3.进入渲染通道实例
+    // 注：调用 vkCmdBeginRenderPass() 会隐式开始指定 RenderPass 的第 0 个 subpass
+    // 这里是 Main RenderPass，Default subpass
     vkCmdBeginRenderPass(commandBuffer,
         &renderPassBeginInfo,
         VK_SUBPASS_CONTENTS_INLINE);
 
-        // 2.1.为第 0 个 subpass 绑定渲染管线
-        vkCmdBindPipeline(commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pContext->mainRenderPassPipelines.triangle.pipeline);
-
-        // 2.2.处理绑定管线的动态状态
-        VkViewport viewport = {};
-        viewport.x          = 0.0f;
-        viewport.y          = 0.0f;
-        viewport.width      = pContext->swapchainExtent.width;
-        viewport.height     = pContext->swapchainExtent.height;
-        viewport.minDepth   = 0.0f;
-        viewport.maxDepth   = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor = {};
-        scissor.offset   = (VkOffset2D){0, 0};
-        scissor.extent   = pContext->swapchainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        for (int i = 0;
-             i < pMainRenderPassPipelinesDrawInfo->triangle.buffersBindingCount;
-             i++)
+        // 为 Default subpass 进行管线绑定、绘制命令录制
+        SubpassDrawInfo* pSubpassDrawInfo = &pMainRenderPassDrawInfo->defaultPass;
+        // pMainRenderPassDrawInfo->defaultPass.pipelineDrawTaskCount 指明了这次
+        // DrawFrame 为 default subpass 使用的管线数量，
+        // pMainRenderPassDrawInfo->defaultPass.pipelineDrawTasks 便是具体的管线的绘制信
+        // 息所在处，即一个 PipelineDrawTask 包含了 “一种” 管线的所有绘制信息.
+        for(int i = 0;
+            i < pSubpassDrawInfo->pipelineDrawTaskCount;
+            i++)
         {
-            // 2.3.为绑定管线绑定顶点缓冲区
-            vkCmdBindVertexBuffers(commandBuffer,
-                // 起始绑定索引，管线规定的，不得乱写
-                pContext->mainRenderPassPipelines.triangle.vertexFirstBindingIndex,
-                // 绑定数 (起始往下)，不得乱写
-                pContext->mainRenderPassPipelines.triangle.vertexBindingCount,
-                // Buffer 数组，个数对应绑定数，也不得乱写
-                &pMainRenderPassPipelinesDrawInfo->
-                    triangle.pBindingBuffersInfos[i].vertexBuffer,
-                // Buffer 数组的 offset 数组，个数对应绑定数，也不得乱写
-                &pMainRenderPassPipelinesDrawInfo->
-                    triangle.pBindingBuffersInfos[i].vertexOffset);
+            pSubpassDrawInfo->pipelineDrawTasks[i].record(pContext,
+                commandBuffer,
+                pSubpassDrawInfo->pipelineDrawTasks[i].pPipelineDrawInfo);
 
-            // 绑定索引
-            vkCmdBindIndexBuffer(commandBuffer,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.pBindingBuffersInfos[i].indexBuffer,
-                pMainRenderPassPipelinesDrawInfo->
-                    triangle.pBindingBuffersInfos[i].indexOffset,
-                VK_INDEX_TYPE_UINT32);
-
-            // 2.4.Draw Call
-
-            // 按 PipelineBindingBuffersInfo 中的 drawItemCount 次调用 vkCmdDraw()
-            int j = 0;
-            for (;
-                 j < pMainRenderPassPipelinesDrawInfo->
-                         triangle.pBindingBuffersInfos[i].drawItemCount;
-                 j++)
-            {
-                vkCmdDraw(commandBuffer,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pDrawItemInfos[j].vertexCount,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pDrawItemInfos[j].instanceCount,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pDrawItemInfos[j].firstVertex,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pDrawItemInfos[j].firstInstance);
-            }
-
-            // 按 PipelineBindingBuffersInfo 中的 indexedDrawItemCount 次调用
-            // vkCmdDrawIndexed()
-            for (j = 0;
-                 j < pMainRenderPassPipelinesDrawInfo->
-                    triangle.pBindingBuffersInfos[i].indexedDrawItemCount;
-                 j++)
-            {
-                vkCmdDrawIndexed(commandBuffer,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[j].indexCount,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[j].instanceCount,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[j].firstIndex,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[j].vertexOffset,
-                    pMainRenderPassPipelinesDrawInfo->triangle.pBindingBuffersInfos[i].
-                        pIndexedDrawItemInfos[j].firstInstance);
-            }
+            // XXX:
+            // 可以看到这里根本不关心使用的是什么管线，并没有进行硬编码，这使得未来管线的增添
+            // 变得容易. 相较于 Pipeline，RenderPass 的设计就较为稳定不多变，所以这里设计外
+            // 部传入的绘制信息的粗细度是以 Subpass Draw Info 为准，而不是以某某
+            // Pipeline Draw Info 硬编码式地传入.
         }
 
-    // 对于目前仅绘制三角形的 mainRenderPass，我们只有一个 subpass，
+    // 对于目前的 mainRenderPass，我们只有一个 subpass（直接绘制到颜色附件），
     // 所以现在可以结束 RenderPass 了
-    //（对于多个 subpass 的 RenderPass，我们要按对应 RenderPass 的设计，
-    // 调用 vkCmdNextSubpass() 以表示进入下一个 subpass）
+    //（对于多个 subpass 的 RenderPass，我们要按对应 RenderPass 的设计，调用
+    // vkCmdNextSubpass() 以表示进入下一个 subpass）
 
-    // 3.结束录制渲染通道
+    // 4.结束录制渲染通道
     vkCmdEndRenderPass(commandBuffer);
     
     // 我们目前只有一个 mainRenderPass，所以现在可以结束录制命令缓冲区了
     //（对于多个 RenderPass，我们调用 vkCmdBeginRenderPass() 以录制下一个 RenderPass）
 
-    // 4.结束录制命令缓冲区
+    // 5.结束录制命令缓冲区
     if (!vwrpEndCommandBuffer(label, commandBuffer))
         return false;
 
@@ -1327,5 +1721,13 @@ static void recreate_swapchain(RendererContext* pContext)
         pContext->swapchain,
         pContext->swapchainExtent.width,
         pContext->swapchainExtent.height);
+}
+
+
+void rctxEndFrame(RendererContext* pContext)
+{
+    // 6.切换到下一飞行帧
+    pContext->currentFrameInFlightIndex =
+        (pContext->currentFrameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
