@@ -8,7 +8,7 @@ static RendererContext* g_pContext = NULL;
 
 static bool g_isFramebufferResized = false;
 
-static void log_lock_function(bool isLock, pthread_mutex_t* pMutex);
+static void log_lock_function(bool isLock, void* pMutex);
 static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int height);
 
 
@@ -35,15 +35,17 @@ EX_API bool rendererInitialize(GLFWwindow* window)
     return true;
 }
 
-static void log_lock_function(bool isLock, pthread_mutex_t* pMutex)
+static void log_lock_function(bool isLock, void* pMutex)
 {
+    pthread_mutex_t* mutex = (pthread_mutex_t*)pMutex;
+
     if (isLock)
     {
-        pthread_mutex_lock(pMutex);
+        pthread_mutex_lock(mutex);
     }
     else
     {
-        pthread_mutex_unlock(pMutex);
+        pthread_mutex_unlock(mutex);
     }
 }
 
@@ -64,9 +66,9 @@ static VmaAllocation g_triangleBufferAllocation = VK_NULL_HANDLE; // 临时
 static VkBuffer g_triangleIndexBuffer = VK_NULL_HANDLE; // 临时
 static VmaAllocation g_triangleIndexBufferAllocation = VK_NULL_HANDLE; // 临时
 
-static VkBuffer g_globalUniformBuffer = VK_NULL_HANDLE;
-// static UnlitMaterial unlitMaterial0 = VK_NULL_HANDLE;
-static VkBuffer g_unlitDrawItemUniformsBuffer = VK_NULL_HANDLE;
+// static VkBuffer g_globalUniformBuffer = VK_NULL_HANDLE;
+// // static UnlitMaterial unlitMaterial0 = VK_NULL_HANDLE;
+// static VkBuffer g_unlitDrawItemUniformsBuffer = VK_NULL_HANDLE;
 EX_API bool rendererReady()
 {
     // 模拟 C# 端通过该 DLL 函数传入顶点数据

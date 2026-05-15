@@ -164,6 +164,8 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
 
     log_info("成功创建渲染管线.");
 
+    if (!create_descriptor_pools(pContext))
+        return false;
 
     if (!create_sync_objects(pContext))     // 创建同步用对象
         return false;
@@ -423,6 +425,8 @@ static bool create_descriptor_set_layouts(RendererContext* pContext)
             &drawItemsDescriptorSetLayoutCreateInfo);
     if (!pContext->drawItemsDescriptorSetLayout)
         return false;
+
+    return true;
 }
 
 static bool create_main_render_pass_pipelines(
@@ -839,31 +843,39 @@ static inline bool create_mainrp_unlit_pipeline(
 // uint32_t cameraDescriptorSetCount, uint32_t drawItemsDescriptorSetCount
 static bool create_descriptor_pools(RendererContext *pContext)
 {
-    // 1. camera Descriptor Set
+    // // 1. camera Descriptor Set
     
-    // camera uniform buffer
-    VkDescriptorPoolSize cameraUniformBufferPoolSize = {};
-    cameraUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    cameraUniformBufferPoolSize.descriptorCount = 16 * MAX_FRAMES_IN_FLIGHT;
+    // // camera uniform buffer
+    // VkDescriptorPoolSize cameraUniformBufferPoolSize = {};
+    // cameraUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    // cameraUniformBufferPoolSize.descriptorCount = 8;
 
-    VkDescriptorPoolCreateInfo cameraDescriptorSetPoolCreateInfo = {};
-    cameraDescriptorSetPoolCreateInfo.sType         =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    cameraDescriptorSetPoolCreateInfo.poolSizeCount = 1;
-    cameraDescriptorSetPoolCreateInfo.pPoolSizes    = &cameraUniformBufferPoolSize;
-    cameraDescriptorSetPoolCreateInfo.maxSets       = 16 * MAX_FRAMES_IN_FLIGHT;
+    // VkDescriptorPoolCreateInfo cameraDescriptorSetPoolCreateInfo = {};
+    // cameraDescriptorSetPoolCreateInfo.sType         =
+    //     VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    // cameraDescriptorSetPoolCreateInfo.poolSizeCount = 1;
+    // cameraDescriptorSetPoolCreateInfo.pPoolSizes    = &cameraUniformBufferPoolSize;
+    // cameraDescriptorSetPoolCreateInfo.maxSets       = 8;
 
-    // drawItem(s) uniform buffer
-    VkDescriptorPoolSize drawItemUniformBufferPoolSize = {};
-    drawItemUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    drawItemUniformBufferPoolSize.descriptorCount = 16 * MAX_FRAMES_IN_FLIGHT;
+    // vwrpCreateDescriptorPool
 
-    VkDescriptorPoolCreateInfo drawItemsDescriptorSetPoolCreateInfo = {};
-    drawItemsDescriptorSetPoolCreateInfo.sType         =
-        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    drawItemsDescriptorSetPoolCreateInfo.poolSizeCount = 1;
-    drawItemsDescriptorSetPoolCreateInfo.pPoolSizes    = &drawItemUniformBufferPoolSize;
-    drawItemsDescriptorSetPoolCreateInfo.maxSets       = 16 * MAX_FRAMES_IN_FLIGHT;
+
+
+    // // 2. drawItems Descriptor Set
+
+    // // drawItem(s) uniform buffer
+    // VkDescriptorPoolSize drawItemUniformBufferPoolSize = {};
+    // drawItemUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    // drawItemUniformBufferPoolSize.descriptorCount = 16;
+
+    // VkDescriptorPoolCreateInfo drawItemsDescriptorSetPoolCreateInfo = {};
+    // drawItemsDescriptorSetPoolCreateInfo.sType         =
+    //     VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    // drawItemsDescriptorSetPoolCreateInfo.poolSizeCount = 1;
+    // drawItemsDescriptorSetPoolCreateInfo.pPoolSizes    = &drawItemUniformBufferPoolSize;
+    // drawItemsDescriptorSetPoolCreateInfo.maxSets       = 16;
+
+    return true;
 }
 
 static bool create_sync_objects(RendererContext* pContext)
@@ -1382,7 +1394,7 @@ void rctxUpdateDynamicBuffer(
         log_error("%s(): dataOffset + dataSize 的结果大于 bufferSize！"
             "请检查你的参数填写是否正确！函数返回.", __func__);
 
-        return false;
+        return;
     }
 
     VmaAllocationInfo allocationInfo = {};

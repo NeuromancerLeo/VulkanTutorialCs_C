@@ -296,9 +296,7 @@ VkDescriptorSetLayout vwrpCreateDescriptorSetLayout(
 ///
 /// @param device 调用该函数需要传入一个对应的 VkDevice 句柄
 /// @param descriptorSetLayout 要销毁的描述符集布局句柄
-///
-/// @return 返回新创建的 VkDescriptorSetLayout 句柄（当发生错误时返回 `NULL`）
-VkDescriptorSetLayout vwrpDestroyDescriptorSetLayout(
+void vwrpDestroyDescriptorSetLayout(
     VkDevice                device,
     VkDescriptorSetLayout   descriptorSetLayout
 );

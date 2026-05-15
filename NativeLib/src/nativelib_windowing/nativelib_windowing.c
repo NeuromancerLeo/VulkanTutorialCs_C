@@ -2,7 +2,7 @@
 
 static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void log_lock_function(bool isLock, pthread_mutex_t* pMutex);
+static void log_lock_function(bool isLock, void* pMutex);
 
 
 EX_API GLFWwindow* initializeWindow(int width, int height, const char* title)
@@ -25,15 +25,17 @@ EX_API GLFWwindow* initializeWindow(int width, int height, const char* title)
     return glfwCreateWindow(width, height, title, NULL, NULL);
 }
 
-static void log_lock_function(bool isLock, pthread_mutex_t* pMutex)
+static void log_lock_function(bool isLock, void* pMutex)
 {
+    pthread_mutex_t* mutex = (pthread_mutex_t*)pMutex;
+
     if (isLock)
     {
-        pthread_mutex_lock(pMutex);
+        pthread_mutex_lock(mutex);
     }
     else
     {
-        pthread_mutex_unlock(pMutex);
+        pthread_mutex_unlock(mutex);
     }
 }
 

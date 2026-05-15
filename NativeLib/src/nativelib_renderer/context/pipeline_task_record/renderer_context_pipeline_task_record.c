@@ -30,7 +30,7 @@ void pipelineTaskRecordTriangle(
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     for (int i = 0;
-            i < pDrawInfo->buffersBindingCount;
+            i < pDrawInfo->bindingCount;
             i++)
     {
         // 为 Triangle 管线绑定顶点缓冲区
@@ -40,14 +40,14 @@ void pipelineTaskRecordTriangle(
             // 绑定数 (起始往下)，不得乱写
             pContext->mainRenderPassPipelines.triangle.vertexBindingCount,
             // Buffer 数组，个数对应绑定数，也不得乱写
-            &pDrawInfo->pBindingBuffersInfos[i].vertexBuffer,
+            &pDrawInfo->pBindingDrawInfos[i].vertexBuffer,
             // Buffer 数组的 offset 数组，个数对应绑定数，也不得乱写
-            &pDrawInfo->pBindingBuffersInfos[i].vertexOffset);
+            &pDrawInfo->pBindingDrawInfos[i].vertexOffset);
 
         // 绑定索引
         vkCmdBindIndexBuffer(commandBuffer,
-            pDrawInfo->pBindingBuffersInfos[i].indexBuffer,
-            pDrawInfo->pBindingBuffersInfos[i].indexOffset,
+            pDrawInfo->pBindingDrawInfos[i].indexBuffer,
+            pDrawInfo->pBindingDrawInfos[i].indexOffset,
             VK_INDEX_TYPE_UINT32);
 
         // Triangle 管线的 Draw Call
@@ -55,27 +55,27 @@ void pipelineTaskRecordTriangle(
         // 按 PipelineBindingBuffersInfo 中的 drawItemCount 次调用 vkCmdDraw()
         int j = 0;
         for (;
-                j < pDrawInfo->pBindingBuffersInfos[i].drawItemCount;
+                j < pDrawInfo->pBindingDrawInfos[i].drawItemCount;
                 j++)
         {
             vkCmdDraw(commandBuffer,
-                pDrawInfo->pBindingBuffersInfos[i].pDrawItemInfos[j].vertexCount,
-                pDrawInfo->pBindingBuffersInfos[i].pDrawItemInfos[j].instanceCount,
-                pDrawInfo->pBindingBuffersInfos[i].pDrawItemInfos[j].firstVertex,
-                pDrawInfo->pBindingBuffersInfos[i].pDrawItemInfos[j].firstInstance);
+                pDrawInfo->pBindingDrawInfos[i].pDrawItemInfos[j].vertexCount,
+                pDrawInfo->pBindingDrawInfos[i].pDrawItemInfos[j].instanceCount,
+                pDrawInfo->pBindingDrawInfos[i].pDrawItemInfos[j].firstVertex,
+                pDrawInfo->pBindingDrawInfos[i].pDrawItemInfos[j].firstInstance);
         }
 
         // 按 PipelineBindingBuffersInfo 中的 indexedDrawItemCount 次调用 vkCmdDrawIndexed()
         for (j = 0;
-                j < pDrawInfo->pBindingBuffersInfos[i].indexedDrawItemCount;
+                j < pDrawInfo->pBindingDrawInfos[i].indexedDrawItemCount;
                 j++)
         {
             vkCmdDrawIndexed(commandBuffer,
-                pDrawInfo->pBindingBuffersInfos[i].pIndexedDrawItemInfos[j].indexCount,
-                pDrawInfo->pBindingBuffersInfos[i].pIndexedDrawItemInfos[j].instanceCount,
-                pDrawInfo->pBindingBuffersInfos[i].pIndexedDrawItemInfos[j].firstIndex,
-                pDrawInfo->pBindingBuffersInfos[i].pIndexedDrawItemInfos[j].vertexOffset,
-                pDrawInfo->pBindingBuffersInfos[i].pIndexedDrawItemInfos[j].firstInstance);
+                pDrawInfo->pBindingDrawInfos[i].pIndexedDrawItemInfos[j].indexCount,
+                pDrawInfo->pBindingDrawInfos[i].pIndexedDrawItemInfos[j].instanceCount,
+                pDrawInfo->pBindingDrawInfos[i].pIndexedDrawItemInfos[j].firstIndex,
+                pDrawInfo->pBindingDrawInfos[i].pIndexedDrawItemInfos[j].vertexOffset,
+                pDrawInfo->pBindingDrawInfos[i].pIndexedDrawItemInfos[j].firstInstance);
         }
     }
 }

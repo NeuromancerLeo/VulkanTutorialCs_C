@@ -1413,7 +1413,7 @@ VkDescriptorSetLayout vwrpCreateDescriptorSetLayout(
 }
 
 
-VkDescriptorSetLayout vwrpDestroyDescriptorSetLayout(
+void vwrpDestroyDescriptorSetLayout(
     VkDevice                device,
     VkDescriptorSetLayout   descriptorSetLayout
 )

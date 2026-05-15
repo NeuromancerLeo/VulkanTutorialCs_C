@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "vertex_data.h"
+#include "data_in_buffer/vertex_data.h"
 
 #include "data_in_buffer/uniform/camera_uniform.h"
 #include "data_in_buffer/uniform/unlit_material_uniform.h"

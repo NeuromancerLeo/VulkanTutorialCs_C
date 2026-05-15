@@ -27,7 +27,8 @@ void get_vertex_data_input_attribute_descriptions(
 {
     if (!outAttributeCount)
     {
-        log_error("%s()：无效的参数，传入的 outAttributeCount 不得为 NULL！");
+        log_error("%s()：无效的参数，传入的 outAttributeCount 不得为 NULL！", __func__);
+
         return;
     }
 
