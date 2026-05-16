@@ -1,4 +1,4 @@
-#version 450;
+#version 450
 
 layout(location = 0) in vec3 in_vertPosition;
 layout(location = 1) in vec3 in_vertColor;
@@ -23,5 +23,5 @@ void main()
         * uDrawItem.modelMatrix
         * uCamera.viewProjectionMatrix;
 
-    out_fragColor = in_vColor;
+    out_fragColor = in_vertColor;
 }

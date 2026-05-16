@@ -201,6 +201,8 @@ EX_API void rendererBeginFrame()
 
 EX_API void rendererDrawFrame()
 {
+    rctxBeginFrame(g_pContext);
+
     // 临时：准备绘制信息
     /**** Triangle 管线部分 ****/
 
@@ -268,6 +270,8 @@ EX_API void rendererDrawFrame()
     rctxDrawFrame(g_pContext, g_isFramebufferResized, &mainRenderPassDrawInfo);
 
     g_isFramebufferResized = false;
+
+    rctxEndFrame(g_pContext);
 }
 
 

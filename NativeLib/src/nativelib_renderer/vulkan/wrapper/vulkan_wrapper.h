@@ -340,6 +340,15 @@ VkPipeline vwrpCreateGraphicsPipeline(
 void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline);
 
 
+VkDescriptorPool vwrpCreateDescriptorPool(
+    VkDevice                            device,
+    const VkDescriptorPoolCreateInfo*   pCreateInfo 
+);
+
+
+void vwrpDestroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool);
+
+
 /// @brief 创建一个信号量，用于在 GPU 端等待 GPU 端完成提交的命令.
 VkSemaphore vwrpCreateSemaphore(
     const char*             label,

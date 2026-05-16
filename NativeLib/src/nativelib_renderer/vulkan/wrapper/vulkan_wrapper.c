@@ -1490,6 +1490,38 @@ void vwrpDestroyPipeline(VkDevice device, VkPipeline pipeline)
 }
 
 
+VkDescriptorPool vwrpCreateDescriptorPool(
+    VkDevice                            device,
+    const VkDescriptorPoolCreateInfo*   pCreateInfo 
+)
+{
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+    VkResult result = vkCreateDescriptorPool(device,
+                          pCreateInfo,
+                          NULL,
+                          &descriptorPool);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to create a VkDescriptorPool! Error Code(VkResult): %d",
+            result);
+
+        return VK_NULL_HANDLE;
+    }
+
+    log_trace("vwrp: 创建了一个 VkDescritorPool.");
+
+    return descriptorPool;
+}
+
+
+void vwrpDestroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool)
+{
+    vkDestroyDescriptorPool(device, descriptorPool, NULL);
+
+    log_trace("vwrp: 调用了 vkDestroyDescriptorPool!");
+}
+
+
 VkSemaphore vwrpCreateSemaphore(
     const char*             label,
     VkDevice                device,
