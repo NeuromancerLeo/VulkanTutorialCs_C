@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../vulkan/vma/vk_mem_alloc.h"
+#include "../resource_deletion_list/renderer_context_resource_deletion_list.h"
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -46,8 +47,18 @@ typedef enum RctxPipelineType {
     // ...
 } RctxPipelineType;
 
+typedef struct RctxCameraDescriptorSetLayout {
+    VkDescriptorSetLayout layout;
+    VkDescriptorSetLayoutBinding uniformBufferBindingLayout;
+} RctxCameraDescriptorSetLayout;
+
+typedef struct RctxDrawItemsDescriptorSetLayout {
+    VkDescriptorSetLayout layout;
+    VkDescriptorSetLayoutBinding uniformBufferBindingLayout;
+} RctxDrawItemsDescriptorSetLayout;
+
 /// @brief 渲染器上下文结构体，使用 rctxNewRendererContext 获取一个该结构体句柄.
-typedef struct RendererContext {
+struct RendererContext {
     uint32_t                    currentFrameInFlightIndex;
 
     GLFWwindow*                 window;
@@ -82,21 +93,23 @@ typedef struct RendererContext {
 
     VkCommandPool               transferCommandPool;
 
-    VkRenderPass                    mainRenderPass;
-    VkFramebuffer*                  swapchainFramebuffers; // 堆分配的数组，需自行释放
+    VkRenderPass                mainRenderPass;
+    VkFramebuffer*              swapchainFramebuffers; // 堆分配的数组，需自行释放
     
-    VkDescriptorSetLayout           cameraDescriptorSetLayout;
-    VkDescriptorPool                cameraDescriptorSetPool;
-    VkDescriptorSetLayout           drawItemsDescriptorSetLayout;
-    VkDescriptorPool                drawItemsDescriptorSetPool;
+    RctxCameraDescriptorSetLayout       cameraDescSetLayout;
+    VkDescriptorPool                    cameraDescSetPool;
+    RctxDrawItemsDescriptorSetLayout    drawItemsDescSetLayout;
+    VkDescriptorPool                    drawItemsDescSetPool;
 
-    RctxMainRenderPassPipelines     mainRenderPassPipelines;
+    RctxMainRenderPassPipelines mainRenderPassPipelines;
 
     // 信号量：意味着一个交换链图像已被获取，其可安全渲染
     VkSemaphore                 swapchainImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
     // 信号量：意味着图像渲染完毕，其可安全呈现（数量为交换链图像数量）
     VkSemaphore*                renderFinishedSemaphores;
-    // 栅栏：表示一个渲染进行中的帧（执行命令缓冲区），用于防止命令缓冲区发生竞态
+    // 栅栏：表示一个渲染进行中的帧（执行命令缓冲区），用于防止依赖当前飞行帧状态所属数据发生竞态
     VkFence                     frameInFlightFences[MAX_FRAMES_IN_FLIGHT];
 
-} RendererContext;
+    RctxBufferDeletionList      bufferDeletionLists[MAX_FRAMES_IN_FLIGHT];
+    RctxAllocationDeletionList  allocationDeletionLists[MAX_FRAMES_IN_FLIGHT];
+};

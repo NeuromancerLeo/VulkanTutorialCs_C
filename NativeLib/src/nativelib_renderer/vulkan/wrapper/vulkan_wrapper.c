@@ -1643,6 +1643,27 @@ void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory)
 }
 
 
+bool vwrpAllocateDescriptorSets(
+    VkDevice                        device,
+    VkDescriptorSetAllocateInfo*    pAllocateInfo,
+    VkDescriptorSet*                outDescriptorSets
+)
+{
+    VkResult result = vkAllocateDescriptorSets(device,
+                          pAllocateInfo,
+                          outDescriptorSets);
+    if (result != VK_SUCCESS)
+    {
+        log_error("Failed to allocate VkDescriptorSets! "
+            "Error Code(VkResult): %d", result);
+
+        return false;
+    }
+
+    return true;
+}
+
+
 void vwrpQueueSubmit(
     VkQueue             queue,
     uint32_t            submitCount,

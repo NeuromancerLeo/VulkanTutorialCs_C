@@ -65,14 +65,10 @@ static VkBuffer g_triangleBuffer = VK_NULL_HANDLE; // 临时
 static VmaAllocation g_triangleBufferAllocation = VK_NULL_HANDLE; // 临时
 static VkBuffer g_triangleIndexBuffer = VK_NULL_HANDLE; // 临时
 static VmaAllocation g_triangleIndexBufferAllocation = VK_NULL_HANDLE; // 临时
-
-// static VkBuffer g_globalUniformBuffer = VK_NULL_HANDLE;
-// // static UnlitMaterial unlitMaterial0 = VK_NULL_HANDLE;
-// static VkBuffer g_unlitDrawItemUniformsBuffer = VK_NULL_HANDLE;
 EX_API bool rendererReady()
 {
     // 模拟 C# 端通过该 DLL 函数传入顶点数据
-    const VertexData triangleVerticesData[] = {  // interleaving vertex attributes
+    const VertexData triangleVertexData[] = {  // interleaving vertex attributes
         {.position = {0.0f, -0.5f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},  // 最上方的点
         {.position = {0.5f,  0.5f, 0.0f}, .color = {0.0f, 0.0f, 0.0f}},  // 右下角的点
         {.position = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 0.0f, 0.0f}},  // 左下角的点  // 顺时针为正面
@@ -97,8 +93,8 @@ EX_API bool rendererReady()
     };
 
     // TODO: 返回 VkBuffer 资源句柄给 C# 端持有，让其管理负责资源的生命周期！
-    if (!rendererCreateStaticVertexBuffer(sizeof(triangleVerticesData),
-             triangleVerticesData,
+    if (!rendererCreateStaticVertexBuffer(sizeof(triangleVertexData),
+             triangleVertexData,
              &g_triangleBuffer,
              &g_triangleBufferAllocation)
         || !rendererCreateStaticIndexBuffer(sizeof(triangleVertexIndices),
@@ -175,9 +171,20 @@ EX_API bool rendererCreateDynamicUniformBuffer(
 }
 
 
-EX_API bool rendererUpdateUniformBuffer()
+EX_API void rendererUpdateUniformBuffer(
+    size_t          bufferSize,
+    uint32_t        dataOffset,
+    size_t          dataSize,
+    void*           pData,
+    VmaAllocation   allocation
+)
 {
-    return true;
+    rctxUpdateDynamicBuffer(g_pContext,
+        bufferSize,
+        dataOffset,
+        dataSize,
+        pData,
+        allocation);
 }
 
 
@@ -187,9 +194,9 @@ EX_API void rendererRequestDestroyBuffer(VkBuffer buffer, VmaAllocation allocati
 }
 
 
-EX_API void rendererDestroyBuffer()
+EX_API void rendererDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 {
-
+    rctxDestroyBuffer(g_pContext, buffer, allocation);
 }
 
 
@@ -199,7 +206,7 @@ EX_API void rendererBeginFrame()
 }
 
 
-EX_API void rendererDrawFrame()
+EX_API void rendererDrawFrame(MainRenderPassDrawInfo *pMainRenderPassDrawInfo)
 {
     rctxBeginFrame(g_pContext);
 

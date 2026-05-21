@@ -116,31 +116,71 @@ void rctxUpdateDynamicBuffer(
 );
 
 
-void rctxRequestDestroyBuffer(
+/// @brief 请求销毁 Buffer 资源，该函数不会立即执行销毁，而是会将传入的资源暂存入当前飞行帧下的
+/// 删除列表中待销毁，其会在你下次调用对应的 rctxBeginFrame() 时刷新以销毁所有在内的资源来保证
+/// 飞行帧之间的数据同步安全.
+///
+/// 在调用该函数后，你不应该以任何方式再次使用已被请求销毁的 Buffer 资源.
+///
+/// 你必须在调用 rctxBeginFrame() 之后，调用 rctxEndFrame() 之前调用该函数以表达正确的飞行帧
+/// 状态下提交销毁的意图. 
+///
+/// @return 当请求成功时返回 true，请求失败返回 false —— 这时你需要自行调用
+/// rctxDestroyBuffer() 才能销毁对应资源
+bool rctxRequestDestroyBuffer(
     RendererContext*    pContext,
     VkBuffer            buffer,
     VmaAllocation       allocation
 );
 
 
-/// @brief TODO: 请求销毁 Buffer 资源，该函数不会立即执行销毁，而是会将目标 Buffer 资源标记为待销毁，
-/// 其会被暂存至安全的时机然后销毁，无需额外操作.
-///
-/// 在调用该函数后，你不应该以任何方式再次使用已被请求销毁的 Buffer 资源. 
-void rctxRequestDestroyBuffer(
-    RendererContext*    pContext,
-    VkBuffer            buffer,
-    VmaAllocation       allocation
-);
+/// @brief 等待渲染器上下文的设备处于空闲状态.
+void rctxWaitIdle(RendererContext* pContext);
 
 
-/// @brief 立即销毁 Buffer 资源，该函数不会对目标 Buffer 资源作任何如是否被命令缓冲区占用的检查.
+/// @brief 立即销毁 Buffer 资源.
 ///
-/// 只有你在确保 Buffer 资源不会被占用时才应调用该函数.
+/// 只有你在确保 Buffer 资源不会被占用时（如程序退出并调用 rctxWaitIdle() 后）才应调用该函数.
 void rctxDestroyBuffer(
     RendererContext*    pContext,
     VkBuffer            buffer,
     VmaAllocation       allocation
+);
+
+
+/// @brief 创建一个相机描述符集对象，并为其更新给定的资源对象.
+///
+/// @param bufferOffset 将 uniformBuffer 更新至描述符集时要应用的偏移量
+/// @param bufferRange 将 uniformBuffer 更新至描述符集时要应用的范围量（偏移量 + 范围量为最终
+/// 的资源更新应用范围）
+/// @param uniformBuffer 要更新至描述符集的 Buffer 资源
+/// @param outDescriptorSet 输出参数，返回创建的相机描述符集对象
+///
+/// @return 函数成功后返回 `true`，发生错误时返回 `false`
+bool rctxCreateCameraDescriptorSet(
+    RendererContext*                pContext,
+    size_t                          bufferOffset,
+    size_t                          bufferRange,
+    VkBuffer                        uniformBuffer,
+    VkDescriptorSet*                outDescriptorSet
+);
+
+
+/// @brief 创建一个 DrawItems 描述符集对象，并为其更新给定的资源对象.
+///
+/// @param bufferOffset 将 uniformBuffer 更新至描述符集时要应用的偏移量
+/// @param bufferRange 将 uniformBuffer 更新至描述符集时要应用的范围量（偏移量 + 范围量为最终
+/// 的资源更新应用范围）
+/// @param uniformBuffer 要更新至描述符集的 Buffer 资源
+/// @param outDescriptorSet 输出参数，返回创建的 DrawItems 描述符集对象
+///
+/// @return 函数成功后返回 `true`，发生错误时返回 `false`
+bool rctxCreateDrawItemsDescriptorSet(
+    RendererContext*                pContext,
+    size_t                          bufferOffset,
+    size_t                          bufferRange,
+    VkBuffer                        uniformBuffer,
+    VkDescriptorSet*                outDescriptorSet
 );
 
 

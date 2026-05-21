@@ -393,6 +393,13 @@ VkDeviceMemory vwrpAllocateDeviceMemory(
 void vwrpFreeDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory);
 
 
+bool vwrpAllocateDescriptorSets(
+    VkDevice                        device,
+    VkDescriptorSetAllocateInfo*    pAllocateInfo,
+    VkDescriptorSet*                outDescriptorSets
+);
+
+
 /// @brief 提交命令缓冲区至队列.
 ///
 /// 注：该函数是外部同步的，因为使用了线程不安全的 `VkQueue` 对象
