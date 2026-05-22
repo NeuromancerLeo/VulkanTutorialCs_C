@@ -1,6 +1,9 @@
 #pragma once
 
-#include "../../context/structs/renderer_context_structs.h"
+#include <vulkan/vulkan.h>
+
+typedef enum RctxPipelineType RctxPipelineType;
+typedef struct RendererContext RendererContext;
 
 /// @brief 一个该信息结构体代表了渲染通道实例中一个 subpass 中的一个特定管线的绘制任务.
 typedef struct PipelineDrawTask {

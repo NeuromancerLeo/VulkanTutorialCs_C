@@ -1,10 +1,8 @@
 #pragma once
 
-#include "../../../common/log.h"
+#include <stdbool.h>
 
 #include <vulkan/vulkan.h>
-#include <stdbool.h>
-#include <string.h>
 
 /// @brief 该结构体定义物理设备拥有的队列族类型及其索引, 以作为 选取物理设备 \ 创建队列
 /// 时的重要依据.
@@ -32,6 +30,7 @@ void find_queue_families(
     VkSurfaceKHR        surface,
     QueueFamilyIndices* pFamilyIndices
 );
+
 
 /// @brief 查询给定物理设备是否有队列族同时支持图形命令和（给定 Surface 的）呈现.
 ///

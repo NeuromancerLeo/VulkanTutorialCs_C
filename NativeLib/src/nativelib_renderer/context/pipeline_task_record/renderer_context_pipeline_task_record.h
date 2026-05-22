@@ -1,10 +1,9 @@
 #pragma once
 
-#include "../../../common/log.h"
-#include "../structs/renderer_context_structs.h"
-#include "../../data_structs/renderer_data_structs.h"
-
 #include <vulkan/vulkan.h>
+
+typedef struct RendererContext RendererContext;
+typedef struct MainRenderPassDrawInfo MainRenderPassDrawInfo;
 
 
 void pipelineTaskRecordTriangle(

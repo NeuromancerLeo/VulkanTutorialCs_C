@@ -1,5 +1,13 @@
 #include "vulkan_wrapper.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "../../../common/log.h"
+#include "queue_family_indices.h"
+#include "swapchain_support_details.h"
+
 #ifdef DEBUG
     static const bool enableValidationLayers = true;
 #else

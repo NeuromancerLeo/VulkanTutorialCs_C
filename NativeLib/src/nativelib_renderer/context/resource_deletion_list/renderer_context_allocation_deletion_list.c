@@ -1,5 +1,10 @@
 #include "renderer_context_allocation_deletion_list.h"
 
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "../../../common/log.h"
+#include "renderer_context_deletion_list_base.h"
 #include "../structs/renderer_context_structs.h"
 
 static bool allocation_deletion_list_add(

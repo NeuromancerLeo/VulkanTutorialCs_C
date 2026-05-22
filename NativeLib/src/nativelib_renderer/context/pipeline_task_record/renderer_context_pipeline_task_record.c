@@ -1,5 +1,9 @@
 #include "renderer_context_pipeline_task_record.h"
 
+#include "../../../common/log.h"
+#include "../structs/renderer_context_structs.h"
+#include "../../data_structs/renderer_data_structs.h"
+
 
 void pipelineTaskRecordTriangle(
     RendererContext*    pContext,

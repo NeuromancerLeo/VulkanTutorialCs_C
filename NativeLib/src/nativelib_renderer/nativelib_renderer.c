@@ -1,6 +1,12 @@
 /// 对外暴露的接口，该接口应该永远不暴露任何具体图形 API 的细节
-
 #include "nativelib_renderer.h"
+
+#include <pthread.h>
+
+#include "../common/log.h"
+#include "context/renderer_context.h"
+#include "context/structs/renderer_context_structs.h"
+#include "data_structs/renderer_data_structs.h"
 
 static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 

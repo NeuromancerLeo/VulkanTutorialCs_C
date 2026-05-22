@@ -1,12 +1,9 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
-#include "../../../common/log.h"
-
-// 前向声明
 typedef struct RendererContext RendererContext;
-
 typedef struct RctxDeletionListBase RctxDeletionListBase;
 
 typedef struct RctxDeletionListOps {

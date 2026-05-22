@@ -1,11 +1,8 @@
 #pragma once
 
-#include "../common/nativelib.h"
-#include "../common/log.h"
-
 #include <GLFW/glfw3.h>
-#include <stdio.h>
-#include <pthread.h>
+
+#include "../common/nativelib.h"
 
 
 /// @brief 初始化 GLFW 库并创建一个窗口.

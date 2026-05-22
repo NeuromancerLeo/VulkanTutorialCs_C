@@ -2,9 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include "../../draw_item_info.h"
-#include "../../indexed_draw_item_info.h"
-#include "../../data_in_buffer/uniform/unlit_material_uniform.h"
+typedef struct DrawItemInfo DrawItemInfo;
+typedef struct IndexedDrawItemInfo IndexedDrawItemInfo;
+typedef struct UnlitMaterialDrawInfo UnlitMaterialDrawInfo;
 
 // 一个 MaterialDrawInfo 表示一种材质实例，所以这里存放材质实例的具体参数；
 // 有多个物体使用该种材质实例，所以把这样的多个物体的绘制信息放到同一个

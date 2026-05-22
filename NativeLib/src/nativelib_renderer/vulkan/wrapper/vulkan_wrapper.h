@@ -1,16 +1,10 @@
 #pragma once
 
-#include "../../../common/log.h"
-#include "queue_family_indices.h"
-#include "swapchain_support_details.h"
-#include "../vma/vk_mem_alloc.h"
+#include <stdbool.h>
 
 #include <vulkan/vulkan.h>
+#include "../vma/vk_mem_alloc.h"
 #include <GLFW/glfw3.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
 
 
 /// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.

@@ -1,6 +1,12 @@
 #include "renderer_context_buffer_deletion_list.h"
 
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "../../../common/log.h"
+#include "renderer_context_deletion_list_base.h"
 #include "../structs/renderer_context_structs.h"
+#include "../../vulkan/wrapper/vulkan_wrapper.h"
 
 static bool buffer_deletion_list_add(
     RctxDeletionListBase*   pBase,

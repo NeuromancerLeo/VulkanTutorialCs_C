@@ -1,10 +1,5 @@
 #pragma once
 
-#include "../../../common/log.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
@@ -32,6 +27,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     VkSurfaceKHR        surface    
 );
 
+
 /// @brief 释放结构体内按堆分配的内存.
 void free_swapchain_support_details(SwapchainSupportDetails* pStructure);
 
@@ -44,6 +40,7 @@ VkSurfaceFormatKHR get_optimal_surface_format(
     VkSurfaceKHR        surface
 );
 
+
 /// @brief 给定物理设备查询 Surface Present Modes 并从中尝试选择最理想的呈现模式并返回.
 /// 
 /// @return 呈现模式 `VK_PRESENT_MODE_MAILBOX_KHR`，当该模式不支持时，返回
@@ -52,6 +49,7 @@ VkPresentModeKHR get_optimal_prensent_mode(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface
 );
+
 
 /// @brief 查询并获取 Surface 范围（Extent）.
 ///

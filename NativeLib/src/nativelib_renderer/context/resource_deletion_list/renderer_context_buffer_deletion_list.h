@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <stdlib.h>
 
 #include "renderer_context_deletion_list_base.h"
-#include "../../vulkan/wrapper/vulkan_wrapper.h"
+
+typedef struct RendererContext RendererContext;
 
 typedef struct RctxBufferDeletionList {
     RctxDeletionListBase    base;

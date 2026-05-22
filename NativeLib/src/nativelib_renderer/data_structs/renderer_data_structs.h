@@ -1,5 +1,4 @@
 /// 这里声明着与渲染器进行互操作所需的所有数据结构
-
 #pragma once
 
 #include "data_in_buffer/vertex_data.h"

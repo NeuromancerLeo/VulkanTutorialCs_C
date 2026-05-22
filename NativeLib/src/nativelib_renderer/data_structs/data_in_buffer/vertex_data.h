@@ -1,8 +1,9 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <vulkan/vulkan.h>
 
-#include "../../../common/log.h"
 #include "../../../common/mathf/mathf.h"
 
 /// @brief 代表顶点属性的数据结构.

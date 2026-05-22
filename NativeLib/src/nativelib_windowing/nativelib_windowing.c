@@ -1,5 +1,9 @@
 #include "nativelib_windowing.h"
 
+#include <pthread.h>
+
+#include "../common/log.h"
+
 static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void log_lock_function(bool isLock, void* pMutex);

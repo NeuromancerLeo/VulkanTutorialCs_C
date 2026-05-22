@@ -1,5 +1,7 @@
 #include "renderer_context_deletion_list_base.h"
 
+#include "../../../common/log.h"
+
 
 bool deletion_list_add(
     RctxDeletionListBase*   pBase,

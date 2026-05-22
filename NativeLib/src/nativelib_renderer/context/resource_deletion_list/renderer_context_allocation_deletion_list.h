@@ -1,9 +1,10 @@
 #pragma once
 
-#include "renderer_context_deletion_list_base.h"
 #include "../../vulkan/vma/vk_mem_alloc.h"
 
-#include <stdlib.h>
+#include "renderer_context_deletion_list_base.h"
+
+typedef struct RendererContext RendererContext;
 
 typedef struct RctxAllocationDeletionList {
     RctxDeletionListBase    base;

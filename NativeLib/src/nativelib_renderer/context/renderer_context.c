@@ -1,5 +1,18 @@
 #include "renderer_context.h"
 
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <pthread.h>
+
+#include "../../common/log.h"
+#include "../vulkan/wrapper/queue_family_indices.h"
+#include "../vulkan/wrapper/vulkan_wrapper.h"
+#include "structs/renderer_context_structs.h"
+#include "pipeline_task_record/renderer_context_pipeline_task_record.h"
+#include "../data_structs/renderer_data_structs.h"
+
 static bool create_main_render_pass(RendererContext* pContext);
 static bool create_swapchain_framebuffers(RendererContext* pContext);
 static inline void destroy_swapchain_related_resources(RendererContext* pContext);

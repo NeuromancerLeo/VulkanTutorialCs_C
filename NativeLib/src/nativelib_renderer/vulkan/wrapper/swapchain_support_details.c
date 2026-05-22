@@ -1,5 +1,13 @@
 #include "swapchain_support_details.h"
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+
+#include "../../../common/log.h"
+
+static inline int clamp_int(int value, int min, int max);
+
 
 SwapchainSupportDetails query_swapchain_support_details(
     VkPhysicalDevice    physicalDevice,
@@ -66,6 +74,7 @@ SwapchainSupportDetails query_swapchain_support_details(
     return supportDetails;
 }
 
+
 void free_swapchain_support_details(SwapchainSupportDetails* pStructure)
 {
     if(pStructure == NULL)
@@ -83,6 +92,7 @@ void free_swapchain_support_details(SwapchainSupportDetails* pStructure)
         pStructure->presentModes = NULL;
     }
 }
+
 
 VkSurfaceFormatKHR get_optimal_surface_format(
     VkPhysicalDevice    physicalDevice,
@@ -113,6 +123,7 @@ VkSurfaceFormatKHR get_optimal_surface_format(
 
     return surfaceFormats[0];
 }
+
 
 VkPresentModeKHR get_optimal_prensent_mode(
     VkPhysicalDevice    physicalDevice,
@@ -154,12 +165,6 @@ VkPresentModeKHR get_optimal_prensent_mode(
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-static inline int clamp_int(int value, int min, int max)
-{
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 VkExtent2D get_surface_exten(
     VkPhysicalDevice    physicalDevice,
@@ -195,4 +200,11 @@ VkExtent2D get_surface_exten(
     };
 
     return actualExtent;
+}
+
+static inline int clamp_int(int value, int min, int max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
 }

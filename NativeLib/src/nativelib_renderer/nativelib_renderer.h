@@ -1,13 +1,14 @@
 #pragma once
 
-#include "../common/log.h"
-#include "../common/nativelib.h"
-#include "context/renderer_context.h"
-#include "data_structs/renderer_data_structs.h"
-
 #include <stdbool.h>
+
+#include <vulkan/vulkan.h>
+#include "vulkan/vma/vk_mem_alloc.h"
 #include <GLFW/glfw3.h>
-#include <pthread.h>
+
+#include "../common/nativelib.h"
+
+typedef struct MainRenderPassDrawInfo MainRenderPassDrawInfo;
 
 
 EX_API bool rendererInitialize(GLFWwindow* window);

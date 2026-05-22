@@ -1,20 +1,13 @@
 #pragma once
 
-#include "../../common/log.h"
-#include "../vulkan/wrapper/vulkan_wrapper.h"
-#include "../vulkan/vma/vk_mem_alloc.h"
-#include "structs/renderer_context_structs.h"
-#include "pipeline_task_record/renderer_context_pipeline_task_record.h"
-#include "../data_structs/renderer_data_structs.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <GLFW/glfw3.h>
+
 #include <vulkan/vulkan.h>
-#include <pthread.h>
+#include "../vulkan/vma/vk_mem_alloc.h"
+#include <GLFW/glfw3.h>
+
+typedef struct RendererContext RendererContext;
+typedef struct MainRenderPassDrawInfo MainRenderPassDrawInfo;
 
 
 /// @brief 为一个渲染器上下文分配内存并返回其句柄.

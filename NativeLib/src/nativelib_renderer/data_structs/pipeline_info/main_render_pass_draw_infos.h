@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "pipeline_draw_task.h"
+typedef struct PipelineDrawTask PipelineDrawTask;
 
 /// @brief 该结构体表示一个 subpass 所需的绘制信息.
 typedef struct SubpassDrawInfo {

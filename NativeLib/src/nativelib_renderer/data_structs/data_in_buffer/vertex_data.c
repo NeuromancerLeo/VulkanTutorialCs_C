@@ -1,5 +1,7 @@
 #include "vertex_data.h"
 
+#include "../../../common/log.h"
+
 
 VkVertexInputBindingDescription get_vertex_data_input_binding_description(
     uint32_t binding

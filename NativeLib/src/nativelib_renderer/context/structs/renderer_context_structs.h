@@ -1,14 +1,16 @@
 #pragma once
 
-#include "../../vulkan/vma/vk_mem_alloc.h"
-#include "../resource_deletion_list/renderer_context_resource_deletion_list.h"
-
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <pthread.h>
+
+#include <vulkan/vulkan.h>
+#include "../../vulkan/vma/vk_mem_alloc.h"
+#include <GLFW/glfw3.h>
+
+#include "../resource_deletion_list/renderer_context_allocation_deletion_list.h"
+#include "../resource_deletion_list/renderer_context_buffer_deletion_list.h"
 
 #define MAX_FRAMES_IN_FLIGHT 2
 

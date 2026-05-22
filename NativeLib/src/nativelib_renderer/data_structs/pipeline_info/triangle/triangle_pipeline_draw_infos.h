@@ -2,8 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
-#include "../../draw_item_info.h"
-#include "../../indexed_draw_item_info.h"
+typedef struct DrawItemInfo DrawItemInfo;
+typedef struct IndexedDrawItemInfo IndexedDrawItemInfo;
 
 /// @brief Triangle 管线绘制所需的绑定绘制信息.
 typedef struct TrianglePipelineBindingDrawInfo {

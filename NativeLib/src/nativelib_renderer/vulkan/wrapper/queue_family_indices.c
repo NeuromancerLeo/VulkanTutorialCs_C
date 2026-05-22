@@ -1,5 +1,9 @@
 #include "queue_family_indices.h"
 
+#include <string.h>
+
+#include "../../../common/log.h"
+
 
 void find_queue_families(
     VkPhysicalDevice    physicalDevice,
@@ -61,6 +65,7 @@ void find_queue_families(
             pFamilyIndices->presentationSupport = i;
     }
 }
+
 
 bool has_queue_family_supports_both_graphics_and_presentation(
     VkPhysicalDevice    physicalDevice,
