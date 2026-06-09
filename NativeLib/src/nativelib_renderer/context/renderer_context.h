@@ -154,7 +154,7 @@ bool rctxCreateCameraDescriptorSet(
     RendererContext*                pContext,
     size_t                          bufferOffset,
     size_t                          bufferRange,
-    VkBuffer                        uniformBuffer,
+    const VkBuffer                  uniformBuffer,
     VkDescriptorSet*                outDescriptorSet
 );
 
@@ -172,7 +172,7 @@ bool rctxCreateDrawItemsDescriptorSet(
     RendererContext*                pContext,
     size_t                          bufferOffset,
     size_t                          bufferRange,
-    VkBuffer                        uniformBuffer,
+    const VkBuffer                  uniformBuffer,
     VkDescriptorSet*                outDescriptorSet
 );
 
@@ -222,3 +222,9 @@ void rctxDrawFrame(
 ///
 /// @param pContext 渲染器上下文句柄
 void rctxEndFrame(RendererContext* pContext);
+
+
+/// @brief 刷新销毁渲染器上下文中所有的销毁队列（包括飞行帧副本）中的资源，你必须在调用了
+/// rctxWaitIdle() 确保任何资源均不被占用后才可以调用该函数，否则很可能会导致被占用的资源被销毁.
+/// @param pContext 
+void rctxDeletionListFlushALL(RendererContext* pContext);

@@ -65,7 +65,26 @@ EX_API void rendererUpdateUniformBuffer(
 EX_API void rendererRequestDestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
 
+EX_API void rendererWaitIdle();
+
+
 EX_API void rendererDestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+
+
+EX_API bool rendererCreateCameraDescriptorSet(
+    size_t              bufferOffset,
+    size_t              bufferRange,
+    const VkBuffer      uniformBuffer,
+    VkDescriptorSet*    outDescriptorSet
+);
+
+
+EX_API bool rendererCreateDrawItemsDescriptorSet(
+    size_t              bufferOffset,
+    size_t              bufferRange,
+    const VkBuffer      uniformBuffer,
+    VkDescriptorSet*    outDescriptorSet
+);
 
 
 EX_API void rendererBeginFrame();

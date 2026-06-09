@@ -200,9 +200,45 @@ EX_API void rendererRequestDestroyBuffer(VkBuffer buffer, VmaAllocation allocati
 }
 
 
+EX_API void rendererWaitIdle()
+{
+    rctxWaitIdle(g_pContext);
+}
+
+
 EX_API void rendererDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 {
     rctxDestroyBuffer(g_pContext, buffer, allocation);
+}
+
+
+EX_API bool rendererCreateCameraDescriptorSet(
+    size_t              bufferOffset,
+    size_t              bufferRange,
+    const VkBuffer      uniformBuffer,
+    VkDescriptorSet*    outDescriptorSet
+)
+{
+    return rctxCreateCameraDescriptorSet(g_pContext,
+               bufferOffset,
+               bufferRange,
+               uniformBuffer,
+               outDescriptorSet);
+}
+
+
+EX_API bool rendererCreateDrawItemsDescriptorSet(
+    size_t              bufferOffset,
+    size_t              bufferRange,
+    const VkBuffer      uniformBuffer,
+    VkDescriptorSet*    outDescriptorSet
+)
+{
+    return rctxCreateDrawItemsDescriptorSet(g_pContext,
+               bufferOffset,
+               bufferRange,
+               uniformBuffer,
+               outDescriptorSet);
 }
 
 
@@ -296,13 +332,15 @@ EX_API void rendererEndFrame()
 
 EX_API void rendererRelease()
 {
-    // TODO: 不是好主意
-    vkDeviceWaitIdle(g_pContext->device);    
+    rctxWaitIdle(g_pContext);
 
-    // 临时
+    // 对所有的销毁队列进行销毁刷新
+    rctxDeletionListFlushALL(g_pContext);
+
+    /** 临时 **/
     rctxDestroyBuffer(g_pContext, g_triangleBuffer, g_triangleBufferAllocation);
     rctxDestroyBuffer(g_pContext, g_triangleIndexBuffer, g_triangleIndexBufferAllocation);
 
-    rctxDestroyRendererContext(g_pContext);   
+    rctxDestroyRendererContext(g_pContext);
 }
 

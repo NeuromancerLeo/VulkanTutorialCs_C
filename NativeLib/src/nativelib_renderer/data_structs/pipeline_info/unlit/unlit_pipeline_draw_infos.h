@@ -4,7 +4,6 @@
 
 typedef struct DrawItemInfo DrawItemInfo;
 typedef struct IndexedDrawItemInfo IndexedDrawItemInfo;
-typedef struct UnlitMaterialDrawInfo UnlitMaterialDrawInfo;
 
 // 一个 MaterialDrawInfo 表示一种材质实例，所以这里存放材质实例的具体参数；
 // 有多个物体使用该种材质实例，所以把这样的多个物体的绘制信息放到同一个

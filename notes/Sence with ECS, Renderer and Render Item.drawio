@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="SRS9tBvet0UNMAy_7AHV" name="Page-1">
-        <mxGraphModel dx="944" dy="2202" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1186" dy="3189" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -433,108 +433,138 @@
                 <mxCell id="164" value="ComponentRegistry" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="830" y="-1480" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="166" value="场景管理器，负责 异步加载场景、异步卸载场景、当前场景管理等（暴露用户脚本API）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                <mxCell id="166" value="场景状态管理器，负责 异步加载场景、异步卸载场景、当前场景管理等，负责场景实例的生命周期（暴露用户脚本API）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="850.05" y="-1600" width="769.95" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="167" value="场景类，场景在内存中的表示，真正存放所有Entity的组件数据，提供组件的增删查改方法（暴露用户脚本API）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="902.05" y="-1540" width="769.95" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="168" value="组件注册表，可以说是场景的组件数据库，实际保管场景的所有组件，负责它们的动态创建和管理（方案为&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;稀疏集&lt;/span&gt;）（不暴露给用户脚本API）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="950" y="-1480" width="769.95" height="60" as="geometry"/>
+                <mxCell id="168" value="组件注册表，可以说是场景的组件数据库，实际保管场景&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;实例&lt;/span&gt;的所有组件，负责它们的动态创建和管理（方案为&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;稀疏集&lt;/span&gt;）（不暴露给用户脚本API）" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="950" y="-1480" width="790" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="173" style="edgeStyle=none;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="169">
+                <mxCell id="173" style="edgeStyle=none;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;" parent="1" source="169" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1390" y="-1140" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="169" value="Pipeline Binding Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="169" value="Pipeline Binding Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1390" y="-1255" width="190" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="172" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="172" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1790" y="-1225" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="177" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="174" target="178">
+                <mxCell id="177" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="174" target="178" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1390" y="-1060" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="182" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;" edge="1" parent="1" source="174" target="175">
+                <mxCell id="182" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;" parent="1" source="174" target="175" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="174" value="Material Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="174" value="Material Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1330" y="-1140" width="120" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="175" value="Material Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="175" value="Material Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1460" y="-1140" width="120" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="176" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="176" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1580" y="-1140" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="178" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="178" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1350" y="-1060" width="80" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="181" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="181" value="......" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1610" y="-1060" width="60" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="183" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;endArrow=none;endFill=0;" edge="1" parent="1" source="178">
+                <mxCell id="183" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;endArrow=none;endFill=0;" parent="1" source="178" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1450" y="-1045.48" as="sourcePoint"/>
                         <mxPoint x="1440" y="-1045" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="186" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="187" target="174">
+                <mxCell id="186" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;" parent="1" source="187" target="174" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="1300" y="-1150" as="sourcePoint"/>
                         <mxPoint x="1280" y="-1180" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="187" value="materialDescriptorSet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="187" value="materialDescriptorSet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1190" y="-1180" width="131" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="188" value="Pipeline Binding Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="188" value="Pipeline Binding Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1600" y="-1255" width="190" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="190" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;" edge="1" parent="1" source="169" target="188">
+                <mxCell id="190" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=none;endFill=0;" parent="1" source="169" target="188" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1580" y="-1225.95" as="sourcePoint"/>
                         <mxPoint x="1590" y="-1225.95" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="191" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="192" target="169">
+                <mxCell id="191" value="" style="endArrow=none;dashed=1;html=1;dashPattern=1 3;strokeWidth=2;entryX=0;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=1;exitDx=0;exitDy=0;" parent="1" source="192" target="169" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="1350" y="-1265" as="sourcePoint"/>
                         <mxPoint x="1380" y="-1255" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="192" value="drawItemsDescriptorSet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                <mxCell id="192" value="drawItemsDescriptorSet" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="1240" y="-1300" width="131" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="193" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="193" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1440" y="-1060" width="80" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="194" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;endArrow=none;endFill=0;" edge="1" parent="1" source="193">
+                <mxCell id="194" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;endArrow=none;endFill=0;" parent="1" source="193" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1540" y="-1045.48" as="sourcePoint"/>
                         <mxPoint x="1530" y="-1045" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="195" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="195" value="DrawItem Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1530" y="-1060" width="80" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="197" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="198" target="169">
+                <mxCell id="197" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="198" target="169" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="1484.52" y="-1270" as="targetPoint"/>
                         <mxPoint x="1485" y="-1310" as="sourcePoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="198" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="198" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1390" y="-1370" width="190" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="199" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="199" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1600" y="-1370" width="190" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="200" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="200" value="Pipeline Draw Info" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="1810" y="-1370" width="190" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="201" value="&lt;font face=&quot;Xiaolai Regular&quot;&gt;&lt;b&gt;// 牢记依赖转置原则&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="730" y="-1630" width="120" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="203" value="&lt;b&gt;&lt;font style=&quot;font-size: 20px;&quot;&gt;Entity、Component、System&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="10" y="-1640" width="290" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="204" value="SceneManager" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1960" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="205" value="SetCurrentScene(Scene scene)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1870" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="206" value="CurrentScene : Scene" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1900" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="207" value="LoadScene(Json file) : Scene" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1840" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="208" value="LoadScene&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Async&lt;/span&gt;(Json file) : Scene" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1810" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="209" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;API设计&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1990" width="99" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="210" value="ReleaseScene(Scene scene)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1780" width="220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="211" value="ReleaseScene&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;Async&lt;/span&gt;(Scene scene)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="-1750" width="220" height="30" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

@@ -18,7 +18,7 @@ typedef struct IndexedDrawItemInfo {
     uint32_t firstIndex;
 
     /// @brief 索引到顶点要后应用的顶点偏移量.
-    int32_t  vertexOffset;
+    uint32_t vertexOffset;
     
     /// @brief 实例化绘制偏移量.
     uint32_t firstInstance;

@@ -1536,7 +1536,7 @@ bool rctxCreateCameraDescriptorSet(
     RendererContext*                pContext,
     size_t                          bufferOffset,
     size_t                          bufferRange,
-    VkBuffer                        uniformBuffer,
+    const VkBuffer                  uniformBuffer,
     VkDescriptorSet*                outDescriptorSet
 )
 {
@@ -1580,7 +1580,7 @@ bool rctxCreateDrawItemsDescriptorSet(
     RendererContext*                pContext,
     size_t                          bufferOffset,
     size_t                          bufferRange,
-    VkBuffer                        uniformBuffer,
+    const VkBuffer                  uniformBuffer,
     VkDescriptorSet*                outDescriptorSet
 )
 {
@@ -1935,5 +1935,20 @@ void rctxEndFrame(RendererContext* pContext)
     // 6.切换到下一飞行帧
     pContext->currentFrameInFlightIndex =
         (pContext->currentFrameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+
+void rctxDeletionListFlushALL(RendererContext* pContext)
+{
+    int i = 0;
+    for (; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        deletion_list_flush(pContext, &pContext->bufferDeletionLists[i].base); 
+    }
+
+    for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        deletion_list_flush(pContext, &pContext->allocationDeletionLists[i].base); 
+    }
 }
 
