@@ -35,11 +35,11 @@ target("nativelib_windowing")
 target_end()
 
 
-target("nativelib_renderer")
+target("nativelib_vkrenderer")
     set_kind("shared")
     set_prefixname("")
 
-    add_files("src/nativelib_renderer/**.c", "src/nativelib_renderer/**.cpp", "src/common/**.c")
+    add_files("src/nativelib_vkrenderer/**.c", "src/nativelib_vkrenderer/**.cpp", "src/common/**.c")
 
     add_cxxflags("-Wno-unused-variable")
 

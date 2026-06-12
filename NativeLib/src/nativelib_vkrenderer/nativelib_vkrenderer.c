@@ -1,5 +1,5 @@
 /// nativelib_vkrenderer 对外暴露的接口，该接口只尝试暴露最低限度抽象的 Vulkan API 的细节
-#include "nativelib_renderer.h"
+#include "nativelib_vkrenderer.h"
 
 #include <pthread.h>
 
