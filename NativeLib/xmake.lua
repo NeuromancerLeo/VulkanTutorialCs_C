@@ -43,5 +43,5 @@ target("nativelib_renderer")
 
     add_cxxflags("-Wno-unused-variable")
 
-    add_packages("vulkansdk", "glfw")
+    add_packages("vulkansdk")
 target_end()
