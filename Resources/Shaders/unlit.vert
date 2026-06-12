@@ -3,13 +3,13 @@
 layout(location = 0) in vec3 in_vertPosition;
 layout(location = 1) in vec3 in_vertColor;
 
-layout(set = 0, binding = 0) uniform CameraUniformBuffer {
+layout(set = 0, binding = 0) uniform CameraUniform {
     mat4 viewProjectionMatrix;  /* 视图-投影矩阵  */
     mat4 viewMatrix;            /* 视图矩阵，备用 */
     mat4 projectionMatrix;      /* 投影矩阵，备用 */
 } uCamera;
 
-layout(set = 1, binding = 0) uniform DrawItemUniformBuffer {
+layout(set = 1, binding = 0) uniform DrawItemUniform {
     mat4 modelMatrix;           /* 模型矩阵 */
 } uDrawItem;
 

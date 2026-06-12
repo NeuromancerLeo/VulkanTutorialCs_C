@@ -23,7 +23,8 @@ typedef struct IndexedDrawItemInfo {
     /// @brief 实例化绘制偏移量.
     uint32_t firstInstance;
 
-    /// @brief 其 drawItemUniform 在 DrawItems 描述符集中的描述符 Buffer 中的动态偏移量.
-    uint32_t uniformDescBufferDynamicOffset;
+    /// @brief 该绘制物体的 `DrawItemUniform` 在 DrawItem 描述符集的描述符
+    /// DrawItemUniformBuffer 中的动态偏移量.
+    uint32_t uniformBufferDescDynamicOffset;
 
 } IndexedDrawItemInfo;
