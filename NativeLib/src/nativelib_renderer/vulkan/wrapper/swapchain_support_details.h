@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
 
 /// @brief 该结构体定义物理设备对一个 Surface 的支持细节，以作为 选取物理设备 \ 创建交换链
 /// 时的重要依据.
@@ -54,12 +53,15 @@ VkPresentModeKHR get_optimal_prensent_mode(
 /// @brief 查询并获取 Surface 范围（Extent）.
 ///
 /// @param surface 给定的 Surface 句柄，用于查询其范围大小
-/// @param window 给定的 GLFWwindow 句柄，用于获取窗口像素大小
-/// （当窗口管理器需要我们自行设置范围时）
+/// @param windowFramebufferWidth 窗口宽像素大小（用于当物理设备需要我们自行设置 surface 范围
+/// 时做参考）
+/// @param windowFramebufferHeight 窗口高像素大小（用于当物理设备需要我们自行设置 surface 范围
+/// 时做参考）
 ///
 /// @return 创建交换链时所需要的 Surface 范围
 VkExtent2D get_surface_exten(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    GLFWwindow*         window
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferHeight
 );

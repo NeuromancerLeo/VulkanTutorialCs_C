@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /// @brief 逻辑上的绘制物体（Draw Item）信息，内部字段对应着 vkCmdDraw() 的参数，在
-/// BindingBuffersInfo 中提供多个该结构体会使得 rendererDrawFrame() 内部在对应管线绑定一次对
+/// BindingBuffersInfo 中提供多个该结构体会使得 vrdrDrawFrame() 内部在对应管线绑定一次对
 /// 应 Buffers 后进行多次 Draw Call（绘制调用），以达到绘制多个物体的效果.
 typedef struct DrawItemInfo {
 

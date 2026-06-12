@@ -169,7 +169,8 @@ VkPresentModeKHR get_optimal_prensent_mode(
 VkExtent2D get_surface_exten(
     VkPhysicalDevice    physicalDevice,
     VkSurfaceKHR        surface,
-    GLFWwindow*         window
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferheight
 )
 {
     VkSurfaceCapabilitiesKHR capabilities = {};
@@ -181,18 +182,15 @@ VkExtent2D get_surface_exten(
     if (capabilities.currentExtent.width != UINT32_MAX)
         return capabilities.currentExtent;
 
-    // 若窗口管理器需要我们自行设置 surface 的范围（ ^ 即高或宽是 uint32_t 的最大值）
+    // 若物理设备需要我们自行设置 surface 的范围（ ^ 即高或宽是 uint32_t 的最大值）
 
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
+    int width = clamp_int(windowFramebufferWidth,
+                    capabilities.minImageExtent.width,
+                    capabilities.maxImageExtent.width);
 
-    width = clamp_int(width,
-                capabilities.minImageExtent.width,
-                capabilities.maxImageExtent.width);
-
-    height = clamp_int(height,
-                capabilities.minImageExtent.height,
-                capabilities.maxImageExtent.height);
+    int height = clamp_int(windowFramebufferheight,
+                    capabilities.minImageExtent.height,
+                    capabilities.maxImageExtent.height);
 
     VkExtent2D actualExtent = {
         .width = width,

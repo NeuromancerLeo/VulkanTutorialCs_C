@@ -4,29 +4,25 @@
 
 
 bool deletion_list_add(
-    RctxDeletionListBase*   pBase,
-    void*                   resource
+    RctxDeletionListBase    *pBase,
+    void                    *resource
 )
 {
-    if (!pBase->pOps->add)
-    {
-        log_error("%s(): pBase->pOps->add() 为空！", __func__);
+    pthread_mutex_lock(pBase->pMutex);
 
-        return false;
-    }
+    bool isSuccess = pBase->pOps->add(pBase, resource);
 
-    return pBase->pOps->add(pBase, resource);
+    pthread_mutex_unlock(pBase->pMutex);
+
+    return isSuccess;
 }
 
 
 void deletion_list_flush(RendererContext* pContext, RctxDeletionListBase* pBase)
 {
-    if (!pBase->pOps->flush)
-    {
-        log_error("%s(): pBase->pOps->flush() 为空！", __func__);
-
-        return;
-    }
+    pthread_mutex_lock(pBase->pMutex);
 
     pBase->pOps->flush(pContext, pBase);
+
+    pthread_mutex_unlock(pBase->pMutex);
 }

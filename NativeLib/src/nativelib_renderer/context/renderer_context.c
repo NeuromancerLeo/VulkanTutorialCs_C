@@ -48,7 +48,11 @@ static bool record_main_command_buffer(
     uint32_t                    swapchainFramebufferIndex,
     MainRenderPassDrawInfo*     pMainRenderPassDrawInfo
 );
-static void recreate_swapchain(RendererContext* pContext);
+static void recreate_swapchain(
+    RendererContext*    pContext,
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferHeight
+);
 
 
 RendererContext* rctxNewRendererContext()
@@ -61,22 +65,27 @@ RendererContext* rctxNewRendererContext()
 }
 
 
-bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
+bool rctxCreateRendererContext(
+    RendererContext*        pContext,
+    uint32_t                windowExtensionCount,
+    const char**            windowExtensionStrings,
+    SurfaceCreateHelperFunc create_window_surface_helper,
+    int                     windowFramebufferWidth,
+    int                     windowFramebufferHeight
+)
 {
     log_info(ESC_BCOLOR_BRIGHT_BLUE "开始构建渲染器上下文..." ESC_RESET);
 
-    pContext->window = window;                          // 保存窗口句柄
-
-    pContext->instance = vwrpCreateInstance();          // 创建 Vk 实例
-    if (pContext->instance == VK_NULL_HANDLE)
+    pContext->instance = vwrpCreateInstance(windowExtensionCount, windowExtensionStrings);
+    if (pContext->instance == VK_NULL_HANDLE)           // 创建 Vk 实例
         return false;
 
     log_info("成功创建 Vulkan 实例.");
 
-    pContext->surface = vwrpCreateSurface(pContext->instance, pContext->window); 
+    pContext->surface = create_window_surface_helper(pContext->instance);
     if (pContext->surface == VK_NULL_HANDLE)            // 创建窗口表面 
         return false;
-    
+
     log_info("成功创建窗口表面.");
 
     pContext->physicalDevice = vwrpPickPhysicalDevice(pContext->instance,
@@ -112,7 +121,8 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
 
     log_info("成功创建 VMA 分配器.");
 
-    pContext->swapchain = vwrpCreateSwapchain(pContext->window,
+    pContext->swapchain = vwrpCreateSwapchain(windowFramebufferWidth,
+                              windowFramebufferHeight,
                               pContext->surface,        // 为窗口（表面）创建交换链
                               pContext->physicalDevice,
                               pContext->device,
@@ -192,7 +202,7 @@ bool rctxCreateRendererContext(RendererContext* pContext, GLFWwindow* window)
         return false;
 
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)      // 初始化删除列表
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)      // 初始化销毁列表
     {
         buffer_deletion_list_init(&pContext->bufferDeletionLists[i], 64);
         allocation_deletion_list_init(&pContext->allocationDeletionLists[i], 64);
@@ -404,30 +414,31 @@ static bool create_swapchain_framebuffers(RendererContext* pContext)
 
 static bool create_descriptor_set_layouts(RendererContext* pContext)
 {
-    // 1.创建 camera 描述符集布局
+    // 1.创建 Camera Set 描述符集布局 // TODO: 改名 Set 叫 Global or something
 
     // 填写 VkDescriptorSetLayoutBinding 定义描述符绑定（不是集）
     // （一个描述符 binding 对应一个着色器代码中的 Uniform 变量）
-    VkDescriptorSetLayoutBinding cameraUniformBufferLayout = {};
-    cameraUniformBufferLayout.binding         = 0;
-    // 对于使用动态更新的 Buffer的 描述符集，在绑定集时使用 dynamic offset 就能实现单个
+    VkDescriptorSetLayoutBinding setLayoutBinding0CameraUniformBuffer = {};
+    setLayoutBinding0CameraUniformBuffer.binding         = 0;
+    // 对于使用动态更新的 Buffer 的 描述符集，在绑定集时使用 dynamic offset 就能实现单个
     // buffer 包含多个数据单元的 "uniforms buffer"，故需指定该 binding 类型为
     // UNIFORM_BUFFER_DYNAMIC 即这个描述符指向的是大 buffer，通过 dynamic offset 取里面的
     // uniform 变量数据.
     // (binding 的布局设置只在乎类型和数量（是否数组），不关心具体大小，之后会在真正创建描述符
     // 集时填写 VkDescriptorBufferInfo 来指定)
-    cameraUniformBufferLayout.descriptorType  =
+    setLayoutBinding0CameraUniformBuffer.descriptorType  =
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     // 这个 descriptorCount 是允许你 binding 的描述符是数组的意思
-    cameraUniformBufferLayout.descriptorCount = 1;
-    cameraUniformBufferLayout.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT
+    setLayoutBinding0CameraUniformBuffer.descriptorCount = 1;
+    setLayoutBinding0CameraUniformBuffer.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT
                                                | VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutCreateInfo cameraDescriptorSetLayoutCreateInfo = {};
     cameraDescriptorSetLayoutCreateInfo.sType =
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     cameraDescriptorSetLayoutCreateInfo.bindingCount = 1;
-    cameraDescriptorSetLayoutCreateInfo.pBindings = &cameraUniformBufferLayout;
+    cameraDescriptorSetLayoutCreateInfo.pBindings =
+        &setLayoutBinding0CameraUniformBuffer;
 
     pContext->cameraDescSetLayout.layout =
         vwrpCreateDescriptorSetLayout(pContext->device,
@@ -436,32 +447,35 @@ static bool create_descriptor_set_layouts(RendererContext* pContext)
         return false;
 
     // 保存 binding 的布局信息备用
-    pContext->cameraDescSetLayout.uniformBufferBindingLayout =
-        cameraUniformBufferLayout;
+    pContext->cameraDescSetLayout.bindingCameraUniformBuffer =
+        setLayoutBinding0CameraUniformBuffer;
 
-    // 2.创建 drawItems 描述符集布局
-    VkDescriptorSetLayoutBinding drawItemsUniformBufferLayout = {};
-    drawItemsUniformBufferLayout.binding         = 0;
-    drawItemsUniformBufferLayout.descriptorType  = 
+    // 2.创建 DrawItem Set 布局
+    VkDescriptorSetLayoutBinding setLayoutBinding0DrawItemUniformBuffer = {};
+    setLayoutBinding0DrawItemUniformBuffer.binding         = 0;
+    // 这里同样要求使用动态缓冲区，以能够用大 Buffer + 动态偏移量来读取 uniform，减少用户需要    
+    // 创建 Buffer 的次数
+    setLayoutBinding0DrawItemUniformBuffer.descriptorType  = 
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; 
-    drawItemsUniformBufferLayout.descriptorCount = 1;
-    drawItemsUniformBufferLayout.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT
-                                                 | VK_SHADER_STAGE_FRAGMENT_BIT;
+    setLayoutBinding0DrawItemUniformBuffer.descriptorCount = 1;
+    setLayoutBinding0DrawItemUniformBuffer.stageFlags = VK_SHADER_STAGE_VERTEX_BIT  
+                                                      | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutCreateInfo drawItemsDescriptorSetLayoutCreateInfo = {};
-    drawItemsDescriptorSetLayoutCreateInfo.sType =
+    VkDescriptorSetLayoutCreateInfo drawItemDescriptorSetLayoutCreateInfo = {};
+    drawItemDescriptorSetLayoutCreateInfo.sType =
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    drawItemsDescriptorSetLayoutCreateInfo.bindingCount = 1;
-    drawItemsDescriptorSetLayoutCreateInfo.pBindings = &drawItemsUniformBufferLayout;
+    drawItemDescriptorSetLayoutCreateInfo.bindingCount = 1;
+    drawItemDescriptorSetLayoutCreateInfo.pBindings =
+        &setLayoutBinding0DrawItemUniformBuffer;
 
-    pContext->drawItemsDescSetLayout.layout =
+    pContext->drawItemDescSetLayout.layout =
         vwrpCreateDescriptorSetLayout(pContext->device,
-            &drawItemsDescriptorSetLayoutCreateInfo);
-    if (!pContext->drawItemsDescSetLayout.layout)
+            &drawItemDescriptorSetLayoutCreateInfo);
+    if (!pContext->drawItemDescSetLayout.layout)
         return false;
 
-    pContext->drawItemsDescSetLayout.uniformBufferBindingLayout =
-        drawItemsUniformBufferLayout;
+    pContext->drawItemDescSetLayout.bindingDrawItemUniformBuffer =
+        setLayoutBinding0DrawItemUniformBuffer;
 
     return true;
 }
@@ -829,17 +843,18 @@ static inline bool create_mainrp_unlit_pipeline(
 
     // 8.（配置 Pipeline Layout）填写 VkPipelineLayoutCreateInfo
     // Pipeline Layout 设置的是 VkDescriptorSetLayout 数组信息和推送常量，与着色器 uniform
-    // 有关
+    // 有关（GLSL 中，Uniform 变量按 Set 分组，一个 Set 下有 N 个 Binding（一个 Binding 就对
+    // 应着一个具体数据资源），Vulkan 中的 VkDescriptorSetLayout 对象便是用来描述这种 Set 的
     VkDescriptorSetLayout descriptorSetLayouts[] =
         { pContext->cameraDescSetLayout.layout,
-          pContext->drawItemsDescSetLayout.layout };
+          pContext->drawItemDescSetLayout.layout };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 2;
     pipelineLayoutInfo.pSetLayouts    = descriptorSetLayouts;
 
-    // 创建管线布局
+    // 创建管线布局（随便存起来）
     pRctxPipeline->pipelineLayout = 
         vwrpCreatePipelineLayout(pContext->device, &pipelineLayoutInfo);
     if (pRctxPipeline->pipelineLayout == VK_NULL_HANDLE)
@@ -870,12 +885,26 @@ static inline bool create_mainrp_unlit_pipeline(
     return true;
 }
 
-// uint32_t cameraDescriptorSetCount, uint32_t drawItemsDescriptorSetCount
+// TODO: cameraDescriptorSetCount, uint32_t drawItemsDescriptorSetCount
 static bool create_descriptor_pools(RendererContext *pContext)
 {
-    // 1. camera Descriptor Set
+    // 关于为什么是 VkDescriptorPool 而不是 VkDescriptor“Set”Pool：
+    // 描述符类型资源需要分配，按 Set 来分池，这会引入 Set 种类的不确定性，实际程序中的 Set 种 
+    // 类由于着色器变体问题甚至能高达上万种，这使得 Vulkan 如果将描述符池设计成描述符“集”池的
+    // 话，驱动要做大量的工作来对底层描述符槽资源进行分配组合，驱动代码会变得复杂且死板（因为不
+    // 知道开发者会用什么样的组合）。所以 Vulkan 选择向上层暴露小粒度的接口，让用户直接按描述符
+    // 类型分配出池自己来取以组合成用户自己的 Set，这样既保持驱动的简单性，又给上层带来了极高的
+    // 灵活性（还有繁琐性bushi）。至于 VkDescriptorPoolCreateInfo.maxSets 字段，因为 Set 本
+    // 身也占用一定的显卡资源，用户预先告知驱动最多会有多少个 Set 从这个池里取描述符资源，这样
+    // 驱动就可以提前准备相关内存和数据为可能的 Set 分配做准备，避免运行时开销。
+    // 就像买东西一样，东西按类别码起（Descriptor），顾客随便组合购买不受超市套餐约束（超市也不
+    // 用费心为顾客设计套餐），除此之外超市还要为顾客准备好购物袋方便它们打包（Set）。
+
+    // 既然我们就是顾客，那么对于我们来说按 Set 设池就是完全合理且易于管理的：
+
+    // 1. Camera Descriptor Set
     
-    // camera uniform buffer
+    // binding0: camera uniform buffer (该描述符为 UNIFORM_BUFFER_DYNAMIC 类型)
     VkDescriptorPoolSize cameraUniformBufferPoolSize = {};
     cameraUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     cameraUniformBufferPoolSize.descriptorCount = 8;
@@ -892,9 +921,9 @@ static bool create_descriptor_pools(RendererContext *pContext)
     if (!pContext->cameraDescSetPool)
         return false;
 
-    // 2. drawItems Descriptor Set
+    // 2. DrawItem Descriptor Set
 
-    // drawItem(s) uniform buffer
+    // binding0: drawItem uniform buffer (该描述符为 UNIFORM_BUFFER_DYNAMIC 类型)
     VkDescriptorPoolSize drawItemUniformBufferPoolSize = {};
     drawItemUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     drawItemUniformBufferPoolSize.descriptorCount = 16;
@@ -906,9 +935,9 @@ static bool create_descriptor_pools(RendererContext *pContext)
     drawItemsDescriptorSetPoolCreateInfo.pPoolSizes    = &drawItemUniformBufferPoolSize;
     drawItemsDescriptorSetPoolCreateInfo.maxSets       = 16;
 
-    pContext->drawItemsDescSetPool = vwrpCreateDescriptorPool(pContext->device,
+    pContext->drawItemDescSetPool = vwrpCreateDescriptorPool(pContext->device,
                                          &drawItemsDescriptorSetPoolCreateInfo);
-    if (!pContext->drawItemsDescSetPool)
+    if (!pContext->drawItemDescSetPool)
         return false;
 
     return true;
@@ -972,14 +1001,27 @@ void rctxDestroyRendererContext(RendererContext* pContext)
 
     if (pContext->instance == VK_NULL_HANDLE)
     {
-        log_info("%s(): 给定渲染器上下文不含有效的 VkInstance 句柄，不会销毁任何内容，退出.",
+        log_info("%s(): 给定渲染器上下文不含有效的 VkInstance 句柄，无法销毁后续内容，退出.",
             __func__);
+
+        free(pContext);
+
+        return;
+    }
+
+    if (pContext->device == VK_NULL_HANDLE)
+    {
+        log_info("%s(): 给定渲染器上下文不含有效的 VkDevice 句柄，无法销毁后续内容，退出.",
+            __func__);
+
+        free(pContext);
+        
         return;
     }
 
     vkDeviceWaitIdle(pContext->device);
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)      // 释放删除列表
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)      // 释放销毁列表自身
     {
         buffer_deletion_list_release(pContext,
             &pContext->bufferDeletionLists[i]);
@@ -1064,9 +1106,9 @@ static inline void destroy_descriptor_set_layouts(RendererContext* pContext)
         vwrpDestroyDescriptorSetLayout(pContext->device,
             pContext->cameraDescSetLayout.layout);
 
-    if(pContext->drawItemsDescSetLayout.layout)
+    if(pContext->drawItemDescSetLayout.layout)
         vwrpDestroyDescriptorSetLayout(pContext->device,
-            pContext->drawItemsDescSetLayout.layout);
+            pContext->drawItemDescSetLayout.layout);
 }
 
 static inline void destroy_descriptor_pools(RendererContext* pContext)
@@ -1075,9 +1117,9 @@ static inline void destroy_descriptor_pools(RendererContext* pContext)
         vwrpDestroyDescriptorPool(pContext->device,
             pContext->cameraDescSetPool);
 
-    if (pContext->drawItemsDescSetPool)
+    if (pContext->drawItemDescSetPool)
         vwrpDestroyDescriptorPool(pContext->device,
-            pContext->drawItemsDescSetPool);
+            pContext->drawItemDescSetPool);
 }
 
 /// @brief 该函数负责销毁 MainRenderPass 所使用的所有管线.
@@ -1520,7 +1562,22 @@ void rctxWaitIdle(RendererContext* pContext)
 }
 
 
-void rctxDestroyBuffer(
+void rctxDeletionListDangerousFlushALL(RendererContext* pContext)
+{
+    int i = 0;
+    for (; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        deletion_list_flush(pContext, &pContext->bufferDeletionLists[i].base); 
+    }
+
+    for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        deletion_list_flush(pContext, &pContext->allocationDeletionLists[i].base); 
+    }
+}
+
+
+void rctxDangerousDestroyBuffer(
     RendererContext*    pContext,
     VkBuffer            buffer,
     VmaAllocation       allocation
@@ -1532,11 +1589,9 @@ void rctxDestroyBuffer(
 }
 
 
-bool rctxCreateCameraDescriptorSet(
+bool rctxAllocateCameraDescriptorSet(
     RendererContext*                pContext,
-    size_t                          bufferOffset,
-    size_t                          bufferRange,
-    const VkBuffer                  uniformBuffer,
+    const VkDescriptorBufferInfo*   pCameraUniformBufferInfo,
     VkDescriptorSet*                outDescriptorSet
 )
 {
@@ -1552,23 +1607,19 @@ bool rctxCreateCameraDescriptorSet(
     if (!vwrpAllocateDescriptorSets(pContext->device, &allocateInfo, outDescriptorSet))
         return false;
 
-    // 配置描述符集中的描述符，这里 camera descriptor set 只有一个描述符 binding，
-    // 为 uniform buffer（binding 0，见 pContext->cameraSetLayout）
-    VkDescriptorBufferInfo uniformBufferInfo = {};
-    uniformBufferInfo.buffer = uniformBuffer;
-    uniformBufferInfo.offset = bufferOffset;
-    uniformBufferInfo.range  = bufferRange;
+    // 将所有资源写入描述符集中对应的描述符，这里 Camera Descriptor Set 只有一个 binding，为
+    // carmera uniform buffer（binding 0，见 pContext->cameraSetLayout）
 
     VkWriteDescriptorSet setWrite = {};
     setWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     setWrite.dstSet          = *outDescriptorSet;
-    setWrite.dstBinding      = setLayoutInfo.uniformBufferBindingLayout.binding;
-    setWrite.descriptorType  = setLayoutInfo.uniformBufferBindingLayout.descriptorType;
+    setWrite.dstBinding      = setLayoutInfo.bindingCameraUniformBuffer.binding;
+    setWrite.descriptorType  = setLayoutInfo.bindingCameraUniformBuffer.descriptorType;
     // 当描述符 binding 是数组形式时，设置要写入的对应索引
     setWrite.dstArrayElement = 0;
-    setWrite.descriptorCount = setLayoutInfo.uniformBufferBindingLayout.descriptorCount;
+    setWrite.descriptorCount = setLayoutInfo.bindingCameraUniformBuffer.descriptorCount;
     // pBufferInfo 的数量 = descriptorCount - dstArrayElement，用于数组形式的 binding 更新
-    setWrite.pBufferInfo     = &uniformBufferInfo;
+    setWrite.pBufferInfo     = pCameraUniformBufferInfo;
 
     vkUpdateDescriptorSets(pContext->device, 1, &setWrite, 0, NULL);
 
@@ -1576,43 +1627,37 @@ bool rctxCreateCameraDescriptorSet(
 }
 
 
-bool rctxCreateDrawItemsDescriptorSet(
+bool rctxAllocateDrawItemDescriptorSet(
     RendererContext*                pContext,
-    size_t                          bufferOffset,
-    size_t                          bufferRange,
-    const VkBuffer                  uniformBuffer,
+    const VkDescriptorBufferInfo*   pDrawItemUniformBufferInfo,
     VkDescriptorSet*                outDescriptorSet
 )
 {
-    RctxDrawItemsDescriptorSetLayout setLayoutInfo = pContext->drawItemsDescSetLayout;
+    RctxDrawItemDescriptorSetLayout setLayoutInfo = pContext->drawItemDescSetLayout;
 
     // 分配描述符集
     VkDescriptorSetAllocateInfo allocateInfo = {};
     allocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocateInfo.descriptorPool     = pContext->drawItemsDescSetPool;
+    allocateInfo.descriptorPool     = pContext->drawItemDescSetPool;
     allocateInfo.descriptorSetCount = 1;
     allocateInfo.pSetLayouts        = &setLayoutInfo.layout;
 
     if (!vwrpAllocateDescriptorSets(pContext->device, &allocateInfo, outDescriptorSet))
         return false;
 
-    // 配置描述符集中的描述符，这里 drawItems descriptor set 只有一个描述符 binding，
-    // 为 uniform buffer (binding 0)
-    VkDescriptorBufferInfo uniformBufferInfo = {};
-    uniformBufferInfo.buffer = uniformBuffer;
-    uniformBufferInfo.offset = bufferOffset;
-    uniformBufferInfo.range  = bufferRange;
+    // 配置描述符集中的描述符，这里 DrawItem Descriptor Set 只有一个描述符 binding，为
+    // drawItem uniform buffer (binding 0)
 
     VkWriteDescriptorSet setWrite = {};
     setWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     setWrite.dstSet          = *outDescriptorSet;
-    setWrite.dstBinding      = setLayoutInfo.uniformBufferBindingLayout.binding;
-    setWrite.descriptorType  = setLayoutInfo.uniformBufferBindingLayout.descriptorType;
+    setWrite.dstBinding      = setLayoutInfo.bindingDrawItemUniformBuffer.binding;
+    setWrite.descriptorType  = setLayoutInfo.bindingDrawItemUniformBuffer.descriptorType;
     // 当描述符 binding 是数组形式时，设置要写入的对应索引
     setWrite.dstArrayElement = 0;
-    setWrite.descriptorCount = setLayoutInfo.uniformBufferBindingLayout.descriptorCount;
+    setWrite.descriptorCount = setLayoutInfo.bindingDrawItemUniformBuffer.descriptorCount;
     // pBufferInfo 的数量 = descriptorCount - dstArrayElement，用于数组形式的 binding 更新
-    setWrite.pBufferInfo     = &uniformBufferInfo;
+    setWrite.pBufferInfo     = pDrawItemUniformBufferInfo;
 
     vkUpdateDescriptorSets(pContext->device, 1, &setWrite, 0, NULL);
 
@@ -1638,10 +1683,11 @@ void rctxBeginFrame(RendererContext* pContext)
 
 
 void rctxDrawFrame(
-    RendererContext*                     pContext,
-    bool                                 isFramebufferResized,
-    // MainRenderPassPipelinesDrawInfo*     pMainRenderPassPipelinesDrawInfo,
-    MainRenderPassDrawInfo*              pMainRenderPassDrawInfo
+    RendererContext*        pContext,
+    bool                    isWindowFramebufferResized,
+    int                     windowFramebufferWidth,
+    int                     windowFramebufferHeight,
+    MainRenderPassDrawInfo* pMainRenderPassDrawInfo
 )
 {
     // 检查传入参数
@@ -1671,8 +1717,10 @@ void rctxDrawFrame(
                         &swapchainImageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR)   // 过时的交换链与表面不再兼容，不再可用于渲染,
     {                                         // 我们需要重建交换链；若为次优我们仍可对已请
-        recreate_swapchain(pContext);         // 求的图像继续渲染，等提交其至呈现后我们再重
+                                              // 求的图像继续渲染，等提交其至呈现后我们再重
                                               // 建交换链.
+        recreate_swapchain(pContext, windowFramebufferWidth, windowFramebufferHeight);
+
         return;     // 返回，直接跳过这一次的 draw_frame 调用
     }
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -1778,8 +1826,8 @@ void rctxDrawFrame(
     // 如果交换链过时或为次优，重建交换链
     if (result == VK_ERROR_OUT_OF_DATE_KHR 
         || result == VK_SUBOPTIMAL_KHR
-        || isFramebufferResized)
-        recreate_swapchain(pContext);
+        || isWindowFramebufferResized)
+        recreate_swapchain(pContext, windowFramebufferWidth, windowFramebufferHeight);
     else if (result != VK_SUCCESS)
         log_error("%s()：交换链图像的呈现发生错误！Error Code(VkResult)：%d",
             __func__, result);
@@ -1798,7 +1846,6 @@ static bool record_main_command_buffer(
     RendererContext*            pContext,
     uint32_t                    frameInFlightIndex,
     uint32_t                    swapchainFramebufferIndex,
-//  TODO: 设计某种 PipelinesDrawInfo，让调用者以渲染通道为单位，传入必要子通道绘制信息，例如：
     MainRenderPassDrawInfo*     pMainRenderPassDrawInfo
 )
 {
@@ -1875,12 +1922,18 @@ static bool record_main_command_buffer(
     return true;
 }
 
-static void recreate_swapchain(RendererContext* pContext)
+/// @brief 重建交换链.
+///
+/// @param windowFramebufferWidth 平台窗口的帧缓冲区宽度
+/// @param windowFramebufferHeight 平台窗口的帧缓冲区高度
+static void recreate_swapchain(
+    RendererContext*    pContext,
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferHeight
+)
 {
-    // 首先获取 GLFW 窗口 Framebuffer 大小，检查若有分量等于 0 的则返回，不做交换链的重建
-    int width = 0, height = 0;
-    glfwGetFramebufferSize(pContext->window, &width, &height);
-    if (width == 0 || height == 0)
+    // 首先获取平台窗口 Framebuffer 大小，检查若有分量等于 0 的则返回，不做交换链的重建
+    if (windowFramebufferWidth == 0 || windowFramebufferHeight == 0)
         return;
 
     log_info("触发了交换链重建，Old Swapchain: %p, extent: %d x %d",
@@ -1897,7 +1950,8 @@ static void recreate_swapchain(RendererContext* pContext)
     VkSwapchainKHR oldSwapchain = pContext->swapchain;
 
     // 重新创建交换链
-    pContext->swapchain = vwrpCreateSwapchain(pContext->window,
+    pContext->swapchain = vwrpCreateSwapchain(windowFramebufferWidth,
+                              windowFramebufferHeight,
                               pContext->surface,
                               pContext->physicalDevice,
                               pContext->device,
@@ -1935,20 +1989,5 @@ void rctxEndFrame(RendererContext* pContext)
     // 6.切换到下一飞行帧
     pContext->currentFrameInFlightIndex =
         (pContext->currentFrameInFlightIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-
-void rctxDeletionListFlushALL(RendererContext* pContext)
-{
-    int i = 0;
-    for (; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        deletion_list_flush(pContext, &pContext->bufferDeletionLists[i].base); 
-    }
-
-    for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        deletion_list_flush(pContext, &pContext->allocationDeletionLists[i].base); 
-    }
 }
 

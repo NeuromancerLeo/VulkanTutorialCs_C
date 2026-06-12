@@ -4,28 +4,22 @@
 
 #include <vulkan/vulkan.h>
 #include "../vma/vk_mem_alloc.h"
-#include <GLFW/glfw3.h>
 
 
 /// @brief 创建 VkInstance，其是程序和 Vulkan 库之间的接口.
+///
+/// @param windowExtensionCount 平台窗口所需扩展数
+/// @param windowExtensionStrings 平台窗口所需所有扩展的对应字符串
 /// 
 /// @return 返回新创建的 VkInstance 句柄（当发生错误时返回 `NULL`）
-VkInstance vwrpCreateInstance(void);
+VkInstance vwrpCreateInstance(
+    uint32_t        windowExtensionCount,
+    const char**    windowExtensionStrings
+);
 
 
 /// @brief 销毁给定的 VkInstance.
 void vwrpDestroyInstance(VkInstance instance);
-
-
-/// @brief 在成功创建 VkInstance 后调用该函数创建 VkSurfaceKHR，其是对窗口系统中
-/// 具体窗口对象 的抽象.
-///
-/// @param instance 调用该函数需要传入一个有效的 VkInstance 句柄
-/// （需确保已启用了 `VK_KHR_surface` 扩展和平台相关的扩展如 `VK_KHR_win32_surface`）
-/// @param window 调用该函数需要传入一个有效的 GLFWwindow 句柄
-///
-/// @return 返回新创建的 VkSurfaceKHR 句柄（当发生错误时返回 `NULL`）
-VkSurfaceKHR vwrpCreateSurface(VkInstance instance, GLFWwindow* window);
 
 
 /// @brief 销毁给定的 VkSurfaceKHR.
@@ -88,9 +82,10 @@ VmaAllocator vwrpCreateVmaAllocator(
 void vwrpDestroyVmaAllocator(VmaAllocator allocator);
 
 
-/// @brief 根据给定窗口句柄和设备创建交换链.
+/// @brief 为给定 Surface 创建交换链.
 ///
-/// @param window 给定窗口句柄
+/// @param windowFramebufferWidth 对应平台窗口缓冲区的像素宽度
+/// @param windowFramebufferHeight 对应平台窗口缓冲区的像素高度
 /// @param surface 给定 Surface 句柄
 /// @param physicalDevice 给定物理设备句柄
 /// @param device 给定设备句柄
@@ -102,7 +97,8 @@ void vwrpDestroyVmaAllocator(VmaAllocator allocator);
 ///
 /// @return 返回新创建的 VkSwapchainKHR 句柄（当发生错误时返回 `NULL`）
 VkSwapchainKHR vwrpCreateSwapchain(
-    GLFWwindow*         window,
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferHeight,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
     VkDevice            device,

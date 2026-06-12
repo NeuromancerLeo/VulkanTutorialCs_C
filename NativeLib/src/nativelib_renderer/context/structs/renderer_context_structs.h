@@ -7,7 +7,6 @@
 
 #include <vulkan/vulkan.h>
 #include "../../vulkan/vma/vk_mem_alloc.h"
-#include <GLFW/glfw3.h>
 
 #include "../resource_deletion_list/renderer_context_allocation_deletion_list.h"
 #include "../resource_deletion_list/renderer_context_buffer_deletion_list.h"
@@ -51,19 +50,17 @@ typedef enum RctxPipelineType {
 
 typedef struct RctxCameraDescriptorSetLayout {
     VkDescriptorSetLayout layout;
-    VkDescriptorSetLayoutBinding uniformBufferBindingLayout;
+    VkDescriptorSetLayoutBinding bindingCameraUniformBuffer;
 } RctxCameraDescriptorSetLayout;
 
-typedef struct RctxDrawItemsDescriptorSetLayout {
+typedef struct RctxDrawItemDescriptorSetLayout {
     VkDescriptorSetLayout layout;
-    VkDescriptorSetLayoutBinding uniformBufferBindingLayout;
-} RctxDrawItemsDescriptorSetLayout;
+    VkDescriptorSetLayoutBinding bindingDrawItemUniformBuffer;
+} RctxDrawItemDescriptorSetLayout;
 
 /// @brief 渲染器上下文结构体，使用 rctxNewRendererContext 获取一个该结构体句柄.
 struct RendererContext {
     uint32_t                    currentFrameInFlightIndex;
-
-    GLFWwindow*                 window;
 
     VkInstance                  instance;
     VkSurfaceKHR                surface;
@@ -100,8 +97,8 @@ struct RendererContext {
     
     RctxCameraDescriptorSetLayout       cameraDescSetLayout;
     VkDescriptorPool                    cameraDescSetPool;
-    RctxDrawItemsDescriptorSetLayout    drawItemsDescSetLayout;
-    VkDescriptorPool                    drawItemsDescSetPool;
+    RctxDrawItemDescriptorSetLayout     drawItemDescSetLayout;
+    VkDescriptorPool                    drawItemDescSetPool;
 
     RctxMainRenderPassPipelines mainRenderPassPipelines;
 

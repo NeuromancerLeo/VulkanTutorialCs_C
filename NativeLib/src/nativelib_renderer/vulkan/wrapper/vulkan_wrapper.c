@@ -40,7 +40,10 @@ static void get_driver_version_string(
 static uint32_t* read_spv_file(size_t* codeSize, const char* spvFilePath);
 
 
-VkInstance vwrpCreateInstance(void)
+VkInstance vwrpCreateInstance(
+    uint32_t        windowExtensionCount,
+    const char**    windowExtensionStrings
+)
 {
     // 0.检查验证层是否开启并可用
     if (enableValidationLayers && !check_instance_layer_properties())
@@ -62,17 +65,13 @@ VkInstance vwrpCreateInstance(void)
     // 1.5.查询所有可用扩展
     check_instance_extension_properties();
 
-    // 2.获取 GLFW 所需扩展的名称标识
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
 #ifdef DEBUG
     // 打印
-    log_debug("GLFW required instance extensions:");
-    for (int i = 0; i < glfwExtensionCount; i++)
+    log_debug("Window required instance extensions:");
+    for (int i = 0; i < windowExtensionCount; i++)
     {
         log_debug(ESC_FCOLOR_BLUE "    %s" ESC_RESET,
-            glfwExtensions[i]);
+            windowExtensionStrings[i]);
     }
 #endif
 
@@ -80,8 +79,8 @@ VkInstance vwrpCreateInstance(void)
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo         = &appInfo;
-    createInfo.enabledExtensionCount    = glfwExtensionCount;   // 这两行启用 GLFW 
-    createInfo.ppEnabledExtensionNames  = glfwExtensions;       // 的所需扩展
+    createInfo.enabledExtensionCount    = windowExtensionCount;   // 这两行启用平台 Window 
+    createInfo.ppEnabledExtensionNames  = windowExtensionStrings; // 的所需扩展
     createInfo.enabledLayerCount        = 0;
     if (enableValidationLayers)     // 若启用验证层
     { 
@@ -205,24 +204,6 @@ void vwrpDestroyInstance(VkInstance instance)
     vkDestroyInstance(instance, NULL);
 
     log_trace("vwrp: 调用了 vkDestroyInstance！");
-}
-
-
-VkSurfaceKHR vwrpCreateSurface(VkInstance instance, GLFWwindow* window)
-{
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-
-    VkResult result = glfwCreateWindowSurface(instance, window, NULL, &surface);
-    if (result != VK_SUCCESS)
-    {
-        log_error("Faild to create a VkSurfaceKHR! Error Code(VkResult): %d", result);
-
-        return VK_NULL_HANDLE;
-    }
-
-    log_trace("vwrp: 成功创建了一个 VkSurfaceKHR！");
-
-    return surface;
 }
 
 
@@ -836,7 +817,8 @@ void vwrpDestroyVmaAllocator(VmaAllocator allocator)
 
 
 VkSwapchainKHR vwrpCreateSwapchain(
-    GLFWwindow*         window,
+    int                 windowFramebufferWidth,
+    int                 windowFramebufferHeight,
     VkSurfaceKHR        surface,
     VkPhysicalDevice    physicalDevice, 
     VkDevice            device,
@@ -847,14 +829,6 @@ VkSwapchainKHR vwrpCreateSwapchain(
     VkExtent2D*         pSwapchainExtent        // 指向 VkExtent2D 变量的地址，用于输出
 )
 {
-    // 0.检查参数是否有效
-    if (window == NULL)
-    {
-        log_error("%s(): 函数参数错误！传入了无效的 GLFWwindow 句柄！", __func__);
-
-        return VK_NULL_HANDLE;
-    }
-
     // 检查传入的地址是否为空
     if (pSwapchainImageCount == NULL 
         || ppSwapchainImages == NULL 
@@ -874,7 +848,10 @@ VkSwapchainKHR vwrpCreateSwapchain(
     VkSurfaceFormatKHR surfaceFormat =
         get_optimal_surface_format(physicalDevice, surface);
 
-    VkExtent2D extent = get_surface_exten(physicalDevice, surface, window);
+    VkExtent2D extent = get_surface_exten(physicalDevice,
+                            surface,
+                            windowFramebufferWidth,
+                            windowFramebufferHeight);
 
     VkPresentModeKHR presentMode =
         get_optimal_prensent_mode(physicalDevice, surface);
@@ -1662,8 +1639,8 @@ bool vwrpAllocateDescriptorSets(
                           outDescriptorSets);
     if (result != VK_SUCCESS)
     {
-        log_error("Failed to allocate VkDescriptorSets! "
-            "Error Code(VkResult): %d", result);
+        log_error("Failed to allocate VkDescriptorSets form VkDescriptorPool: %p! "
+            "Error Code(VkResult): %d", pAllocateInfo->descriptorPool, result);
 
         return false;
     }

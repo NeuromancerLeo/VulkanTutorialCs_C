@@ -1,4 +1,4 @@
-/// 对外暴露的接口，该接口应该永远不暴露任何具体图形 API 的细节
+/// nativelib_vkrenderer 对外暴露的接口，该接口只尝试暴露最低限度抽象的 Vulkan API 的细节
 #include "nativelib_renderer.h"
 
 #include <pthread.h>
@@ -8,6 +8,8 @@
 #include "context/structs/renderer_context_structs.h"
 #include "data_structs/renderer_data_structs.h"
 
+static bool g_initialized = false;
+
 static pthread_mutex_t g_log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static RendererContext* g_pContext = NULL;
@@ -15,10 +17,15 @@ static RendererContext* g_pContext = NULL;
 static bool g_isFramebufferResized = false;
 
 static void log_lock_function(bool isLock, void* pMutex);
-static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int height);
 
 
-EX_API bool rendererInitialize(GLFWwindow* window)
+EX_API bool vrdrInitialize(
+    uint32_t                windowExtensionCount,
+    const char**            windowExtensionStrings,
+    SurfaceCreateHelperFunc create_window_surface_helper,
+    int                     windowFramebufferWidth,
+    int                     windowFramebufferHeight
+)
 {
     // 配置 log 库
 #ifndef DEBUG
@@ -26,17 +33,34 @@ EX_API bool rendererInitialize(GLFWwindow* window)
 #endif
     log_set_lock(log_lock_function, &g_log_mutex);
 
+    if(g_initialized)
+        return false;
+
     // 为渲染器上下文分配内存
     g_pContext = rctxNewRendererContext();
+
+    if (!g_pContext)
+        return false;
+
     // 构建渲染器上下文
-    if (!rctxCreateRendererContext(g_pContext, window))
+    if (!rctxCreateRendererContext(g_pContext,
+             windowExtensionCount,
+             windowExtensionStrings,
+             create_window_surface_helper,
+             windowFramebufferWidth,
+             windowFramebufferHeight))
     {
         rctxDestroyRendererContext(g_pContext);
         return false;
     }
 
-    // 这里设置一些 GLFW 回调函数
-    glfwSetFramebufferSizeCallback(window, frame_buffer_resize_call_back);
+    /***
+        RenderingService.Initialize 中调用
+        WindowingService.SetFramebufferSizeCallback(this.vkrdrFrambufferSizeCallback) 
+        以设置回调函数 
+    ***/
+
+    g_initialized = true;
 
     return true;
 }
@@ -55,67 +79,20 @@ static void log_lock_function(bool isLock, void* pMutex)
     }
 }
 
-static void frame_buffer_resize_call_back(GLFWwindow* window, int width, int height)
+
+EX_API void vkrdrFramebufferResizeCallback(Window* window, int width, int height)
 {
     // 避免未使用参数警告
     (void)window;
 
     log_debug("%s(): width = %d, hight = %d", __func__, width, height);
 
-    // 设置该全局变量以表示 GLFW 的窗口帧缓冲区大小被更改
+    // 设置该全局变量以表示窗口的帧缓冲区大小被更改
     g_isFramebufferResized = true;
 }
 
-// TODO: C# 自行接收并包装成 BufferResource 类
-static VkBuffer g_triangleBuffer = VK_NULL_HANDLE; // 临时
-static VmaAllocation g_triangleBufferAllocation = VK_NULL_HANDLE; // 临时
-static VkBuffer g_triangleIndexBuffer = VK_NULL_HANDLE; // 临时
-static VmaAllocation g_triangleIndexBufferAllocation = VK_NULL_HANDLE; // 临时
-EX_API bool rendererReady()
-{
-    // 模拟 C# 端通过该 DLL 函数传入顶点数据
-    const VertexData triangleVertexData[] = {  // interleaving vertex attributes
-        {.position = {0.0f, -0.5f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},  // 最上方的点
-        {.position = {0.5f,  0.5f, 0.0f}, .color = {0.0f, 0.0f, 0.0f}},  // 右下角的点
-        {.position = {-0.5f, 0.5f, 0.0f}, .color = {0.0f, 0.0f, 0.0f}},  // 左下角的点  // 顺时针为正面
-        {.position = {0.0f,  0.6f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},  // 偏下方的点
-        {.position = {0.2f,  0.8f, 0.0f}, .color = {0.0f, 0.0f, 1.0f}},  // 最下方偏右的点
-        {.position = {-0.2f,  0.8f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}}, // 最下方偏左的点
-        {.position = {-0.9f, -0.1f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}}, // 矩形，左上 6
-        {.position = {-0.7f, -0.1f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}}, // 矩形，右上 7
-        {.position = {-0.9f, 0.1f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}},  // 矩形，左下 8
-        {.position = {-0.7f, 0.1f, 0.0f}, .color = {0.0f, 1.0f, 0.0f}},  // 矩形，右下 9
-        {.position = {0.84f, -0.2f, 0.0f}, .color = {0.1f, 0.1f, 0.4f}}, // 不规则矩形，左上 10
-        {.position = {0.99f, -0.3f, 0.0f}, .color = {0.1f, 0.1f, 0.4f}}, // 不规则矩形，右上 11
-        {.position = {0.8f, 0.4f, 0.0f}, .color = {0.1f, 0.1f, 0.4f}},  // 不规则矩形，左下 12
-        {.position = {0.9f, 0.1f, 0.0f}, .color = {0.1f, 0.1f, 0.4f}}   // 不规则矩形，右下 13
-    };
 
-    uint32_t triangleVertexIndices[] = {
-        6, 9, 8,
-        6, 7, 9,
-        10, 13, 12,
-        10, 11, 13
-    };
-
-    // TODO: 返回 VkBuffer 资源句柄给 C# 端持有，让其管理负责资源的生命周期！
-    if (!rendererCreateStaticVertexBuffer(sizeof(triangleVertexData),
-             triangleVertexData,
-             &g_triangleBuffer,
-             &g_triangleBufferAllocation)
-        || !rendererCreateStaticIndexBuffer(sizeof(triangleVertexIndices),
-               triangleVertexIndices,
-               &g_triangleIndexBuffer,
-               &g_triangleIndexBufferAllocation))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-
-EX_API bool rendererCreateStaticVertexBuffer(
+EX_API bool vrdrCreateStaticVertexBuffer(
     size_t              dataSize,
     const void*         pVertexData,
     VkBuffer*           outBuffer,
@@ -133,7 +110,7 @@ EX_API bool rendererCreateStaticVertexBuffer(
 }
 
 
-EX_API bool rendererCreateStaticIndexBuffer(
+EX_API bool vrdrCreateStaticIndexBuffer(
     uint32_t            dataSize,
     const uint32_t*     pIndexData,
     VkBuffer*           outBuffer,
@@ -151,13 +128,13 @@ EX_API bool rendererCreateStaticIndexBuffer(
 }
 
 
-EX_API uint32_t rendererGetMinimalUniformBufferOffsetAlignment()
+EX_API uint32_t vrdrGetMinimalUniformBufferOffsetAlignment()
 {
     return g_pContext->physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
 }
 
 
-EX_API bool rendererCreateDynamicUniformBuffer(
+EX_API bool vrdrCreateDynamicUniformBuffer(
     size_t              bufferSize,
     uint32_t            dataOffset,
     size_t              dataSize,
@@ -177,7 +154,7 @@ EX_API bool rendererCreateDynamicUniformBuffer(
 }
 
 
-EX_API void rendererUpdateUniformBuffer(
+EX_API void vrdrUpdateUniformBuffer(
     size_t          bufferSize,
     uint32_t        dataOffset,
     size_t          dataSize,
@@ -194,153 +171,106 @@ EX_API void rendererUpdateUniformBuffer(
 }
 
 
-EX_API void rendererRequestDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+EX_API bool vrdrRequestDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 {
-    rctxRequestDestroyBuffer(g_pContext, buffer, allocation);
+    return rctxRequestDestroyBuffer(g_pContext, buffer, allocation);
 }
 
 
-EX_API void rendererWaitIdle()
+EX_API void vrdrWaitIdle()
 {
     rctxWaitIdle(g_pContext);
 }
 
 
-EX_API void rendererDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+EX_API void vrdrDeletionListDangerousFlushALL()
 {
-    rctxDestroyBuffer(g_pContext, buffer, allocation);
+    rctxDeletionListDangerousFlushALL(g_pContext);
 }
 
 
-EX_API bool rendererCreateCameraDescriptorSet(
-    size_t              bufferOffset,
-    size_t              bufferRange,
-    const VkBuffer      uniformBuffer,
+EX_API void vrdrDangerousDestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+{
+    rctxDangerousDestroyBuffer(g_pContext, buffer, allocation);
+}
+
+
+EX_API bool vrdrAllocateCameraDescriptorSet(
+    size_t              cameraUniformBufferOffset,
+    size_t              cameraUniformBufferRange,
+    const VkBuffer      cameraUniformBuffer,
     VkDescriptorSet*    outDescriptorSet
 )
 {
-    return rctxCreateCameraDescriptorSet(g_pContext,
-               bufferOffset,
-               bufferRange,
-               uniformBuffer,
+    VkDescriptorBufferInfo cameraUniformBufferInfo = {};
+    cameraUniformBufferInfo.offset = cameraUniformBufferOffset;
+    cameraUniformBufferInfo.range  = cameraUniformBufferRange;
+    cameraUniformBufferInfo.buffer = cameraUniformBuffer;
+
+    return rctxAllocateCameraDescriptorSet(g_pContext,
+               &cameraUniformBufferInfo,
                outDescriptorSet);
 }
 
 
-EX_API bool rendererCreateDrawItemsDescriptorSet(
-    size_t              bufferOffset,
-    size_t              bufferRange,
-    const VkBuffer      uniformBuffer,
+EX_API bool vrdrAllocateDrawItemDescriptorSet(
+    size_t              drawItemUniformBufferOffset,
+    size_t              drawItemUniformBufferRange,
+    const VkBuffer      drawItemUniformBuffer,
     VkDescriptorSet*    outDescriptorSet
 )
 {
-    return rctxCreateDrawItemsDescriptorSet(g_pContext,
-               bufferOffset,
-               bufferRange,
-               uniformBuffer,
+    VkDescriptorBufferInfo drawItemUniformBufferInfo = {};
+    drawItemUniformBufferInfo.offset = drawItemUniformBufferOffset;
+    drawItemUniformBufferInfo.range  = drawItemUniformBufferRange;
+    drawItemUniformBufferInfo.buffer = drawItemUniformBuffer;
+
+    return rctxAllocateDrawItemDescriptorSet(g_pContext,
+               &drawItemUniformBufferInfo,
                outDescriptorSet);
 }
 
 
-EX_API void rendererBeginFrame()
+EX_API void vrdrBeginFrame()
 {
     rctxBeginFrame(g_pContext);
 }
 
 
-EX_API void rendererDrawFrame(MainRenderPassDrawInfo *pMainRenderPassDrawInfo)
+EX_API void vrdrDrawFrame(
+    MainRenderPassDrawInfo  *pMainRenderPassDrawInfo,
+    int                     windowFramebufferWidth,
+    int                     windowFramebufferHeight
+)
 {
-    rctxBeginFrame(g_pContext);
-
-    // 临时：准备绘制信息
-    /**** Triangle 管线部分 ****/
-
-    // 模拟 C# 端通过该 DLL 函数传入的顶点数据信息
-    DrawItemInfo triangleDrawItemInfo01 = {};
-    triangleDrawItemInfo01.vertexCount   = 3;
-    triangleDrawItemInfo01.instanceCount = 1;
-    triangleDrawItemInfo01.firstVertex   = 0;
-    triangleDrawItemInfo01.firstInstance = 0;
-
-    DrawItemInfo triangleDrawItemInfo02 = {};
-    triangleDrawItemInfo02.vertexCount   = 3;
-    triangleDrawItemInfo02.instanceCount = 1;
-    triangleDrawItemInfo02.firstVertex   = 3;
-    triangleDrawItemInfo02.firstInstance = 0;
-
-    DrawItemInfo triangleDrawItemInfos[] = {
-        triangleDrawItemInfo01, triangleDrawItemInfo02
-    };
-
-    IndexedDrawItemInfo triangleIndexedDrawItemInfo01 = {};
-    triangleIndexedDrawItemInfo01.indexCount    = 6;
-    triangleIndexedDrawItemInfo01.instanceCount = 1;
-    triangleIndexedDrawItemInfo01.firstIndex    = 0;
-    triangleIndexedDrawItemInfo01.vertexOffset  = 0;
-    triangleIndexedDrawItemInfo01.firstInstance = 0;
-
-    IndexedDrawItemInfo triangleIndexedDrawItemInfo02 = {};
-    triangleIndexedDrawItemInfo02.indexCount    = 6;
-    triangleIndexedDrawItemInfo02.instanceCount = 1;
-    triangleIndexedDrawItemInfo02.firstIndex    = 6;
-    triangleIndexedDrawItemInfo02.vertexOffset  = 0;
-    triangleIndexedDrawItemInfo02.firstInstance = 0;
-
-    IndexedDrawItemInfo triangleIndexedDrawItemInfos[] = {
-        triangleIndexedDrawItemInfo01, triangleIndexedDrawItemInfo02
-    };
-
-    // 准备 triangle 管线的顶点集信息
-    TrianglePipelineBindingDrawInfo triangleBindingDrawInfo0 = {};
-    triangleBindingDrawInfo0.vertexBuffer          = g_triangleBuffer;  // 对应了绑定
-    triangleBindingDrawInfo0.vertexOffset          = 0;
-    triangleBindingDrawInfo0.indexBuffer           = g_triangleIndexBuffer;
-    triangleBindingDrawInfo0.indexOffset           = 0;
-    triangleBindingDrawInfo0.drawItemCount         = 2;  // 对应了该绑定对应绘制
-    triangleBindingDrawInfo0.pDrawItemInfos        = triangleDrawItemInfos;
-    triangleBindingDrawInfo0.indexedDrawItemCount  = 2;
-    triangleBindingDrawInfo0.pIndexedDrawItemInfos = triangleIndexedDrawItemInfos;
-
-    TrianglePipelineDrawInfo trianglePipelineDrawInfo = {};
-    trianglePipelineDrawInfo.bindingCount = 1;   // 对应了绑定次数
-    trianglePipelineDrawInfo.pBindingDrawInfos = &triangleBindingDrawInfo0;
-
-    // 为 给 Triangle 管线准备的绘制信息 新建一个 PipelineDrawTask
-    PipelineDrawTask trianglePipelineDrawTask = {};
-    trianglePipelineDrawTask.pipelineType      = RCTX_PIPELINE_TYPE_TRIANGLE;
-    trianglePipelineDrawTask.pPipelineDrawInfo = &trianglePipelineDrawInfo;
-
-    MainRenderPassDrawInfo mainRenderPassDrawInfo = {};
-    // 设置 Default 子通道
-    // 只绑定一个管线任务，也就是 Triangle 管线
-    mainRenderPassDrawInfo.defaultPass.pipelineDrawTaskCount = 1;
-    mainRenderPassDrawInfo.defaultPass.pipelineDrawTasks = &trianglePipelineDrawTask;
-
-    rctxDrawFrame(g_pContext, g_isFramebufferResized, &mainRenderPassDrawInfo);
+    rctxDrawFrame(g_pContext,
+        g_isFramebufferResized,
+        windowFramebufferWidth,
+        windowFramebufferHeight,
+        pMainRenderPassDrawInfo);
 
     g_isFramebufferResized = false;
-
-    rctxEndFrame(g_pContext);
 }
 
 
-EX_API void rendererEndFrame()
+EX_API void vrdrEndFrame()
 {
     rctxEndFrame(g_pContext);
 }
 
 
-EX_API void rendererRelease()
+EX_API void vrdrTerminate()
 {
+    if (!g_initialized)
+        return;
+
     rctxWaitIdle(g_pContext);
 
     // 对所有的销毁队列进行销毁刷新
-    rctxDeletionListFlushALL(g_pContext);
-
-    /** 临时 **/
-    rctxDestroyBuffer(g_pContext, g_triangleBuffer, g_triangleBufferAllocation);
-    rctxDestroyBuffer(g_pContext, g_triangleIndexBuffer, g_triangleIndexBufferAllocation);
+    rctxDeletionListDangerousFlushALL(g_pContext);
 
     rctxDestroyRendererContext(g_pContext);
+
+    g_initialized = false;
 }
 
